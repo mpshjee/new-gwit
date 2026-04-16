@@ -3,10 +3,13 @@
 
 import getpass
 import json
+import logging
 import os
 import sys
 
 import requests
+
+logger = logging.getLogger('gwkit')
 
 # sso auth
 whatsup_url = 'whatsup.nhnent.com'
@@ -284,21 +287,30 @@ def init_server_list():
     get_params = {'formMode': '1', 'pageNum': '1', 'orderFieldName': 'host_name', 'orderType': '1'}
 
     post_response = session.post(post_url, json=post_params)
+    logger.info('[init] server group list response status: %s', post_response.status_code)
+    logger.info('[init] server group list response body: %s', post_response.text)
+
     post_data_list = post_response.json().get("serverGroupForManagementData").get("data")
+    logger.info('[init] total server groups: %d', len(post_data_list))
     result = list()
 
     i = 1
     for li in post_data_list:
         server_group_code = li.get('serverGroupCode')
         service_name = li.get('serviceName')
+        logger.info('[init] fetching group [%d/%d]: code=%s, service=%s',
+                     i, len(post_data_list), server_group_code, service_name)
 
         url = get_url + str(server_group_code)
         get_response = session.get(url, params=get_params)
+        logger.info('[init] group %s response status: %s', server_group_code, get_response.status_code)
 
         contents = get_response.content
         dict_contents = json.loads(contents)
 
         server_list = dict_contents.get('serverGroupForManagement').get('data').get('serverList')
+        logger.info('[init] group %s: %d servers found', server_group_code, len(server_list))
+
         for server in server_list:
             file_data = dict()
             file_data["host"] = server.get('hostName').encode("utf-8")
@@ -310,13 +322,19 @@ def init_server_list():
                 tags = server.get('tags').encode("utf-8")
                 file_data["tags"] = tags.split()
 
+            logger.info('[init] server: host=%s, desc=%s, tags=%s',
+                         file_data["host"], file_data["description"], file_data["tags"])
             result.append(file_data)
         print_progress(i, len(post_data_list), 'Fetch Progress:', 'Complete', 1, 50)
         i += 1
     print
     ""
 
+    logger.info('[init] total servers collected: %d', len(result))
+    logger.info('[init] saving to %s', server_list_json_file)
+
     final_result = str(result).replace("\'", "\"")
     f = open(server_list_json_file, 'w')
     f.write(final_result)
     f.close()
+    logger.info('[init] save complete')
