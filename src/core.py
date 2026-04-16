@@ -16,8 +16,9 @@ whatsup_url = 'whatsup.nhnent.com'
 
 # gwkit path file
 script_path = os.path.dirname(os.path.realpath(__file__))
-kinit_password = '{0}/.kinit_passwd'.format(script_path)
-server_list_json_file = '{0}/server_list.json'.format(script_path)
+project_root = os.path.dirname(script_path)
+kinit_password = '{0}/.kinit_passwd'.format(project_root)
+server_list_json_file = '{0}/server_list.json'.format(project_root)
 
 
 class ResizeRequested(Exception):
