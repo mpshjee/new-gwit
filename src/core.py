@@ -17,7 +17,7 @@ whatsup_url = 'whatsup.nhnent.com'
 # gwkit path file
 script_path = os.path.dirname(os.path.realpath(__file__))
 project_root = os.path.dirname(script_path)
-kinit_password = '{0}/.kinit_passwd'.format(project_root)
+kinit_password = os.path.expanduser('~/.kinit_passwd')
 server_list_json_file = '{0}/server_list.json'.format(project_root)
 
 
