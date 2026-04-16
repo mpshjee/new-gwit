@@ -20,7 +20,14 @@ kinit_password = '{0}/.kinit_passwd'.format(script_path)
 server_list_json_file = '{0}/server_list.json'.format(script_path)
 
 
+class ResizeRequested(Exception):
+    pass
+
+
 class Context:
+    MIN_ROWS = 17
+    MIN_COLS = 60
+
     def __init__(self):
         self.user_idx = 0
         self.keyword = ''
@@ -35,6 +42,9 @@ class Context:
         self.rows = rows
         self.cols = cols
         self.half_cols = int(cols / 2)
+
+    def is_too_small(self):
+        return self.rows < self.MIN_ROWS or self.cols < self.MIN_COLS
 
 
 class UserState:

@@ -6,7 +6,38 @@ import logging
 import os
 import re
 
+from core import ResizeRequested
+
 logger = logging.getLogger('gwkit')
+
+
+def safe_addstr(window, y, x, text, attr=0):
+    try:
+        max_y, max_x = window.getmaxyx()
+        if y < 0 or y >= max_y or x < 0 or x >= max_x:
+            return
+        available = max_x - x - 1
+        if available <= 0:
+            return
+        window.addstr(y, x, text[:available], attr)
+    except curses.error:
+        pass
+
+
+def calc_popup_dims(context, desired_width=100, desired_height=12):
+    max_popup_w = context.cols - 4
+    max_popup_h = context.rows - context.top_help_rows - context.top_win_rows - 2
+
+    width = min(desired_width, max_popup_w)
+    width = max(width, 40)
+
+    height = min(desired_height, max_popup_h)
+    height = max(height, 3)
+
+    x = max(0, (context.cols - width) // 2)
+    y = context.top_help_rows + context.top_win_rows + min(4, max(0, max_popup_h - height))
+
+    return height, width, y, x
 
 
 class HelpWindow:
@@ -14,15 +45,15 @@ class HelpWindow:
         self.window = curses.newwin(context.top_help_rows, context.cols, 0, 0)
         self.window.border(0)
         self.window.scrollok(True)
-        self.window.addstr(0, 5, 'Help')
-        self.window.addstr(1, 2, '[/]: change user to rlogin, [,]: change rlogin/ssh')
-        self.window.addstr(2, 2, '[ctrl-n]: register new server     [ctrl-d]: delete server')
-        self.window.addstr(3, 2, '[ctrl-e]: modify server           [ctrl-c]: quit or close popup window')
-        self.window.addstr(4, 2, '[ctrl-l]: load old gw file        [ctrl-r]: reset popup input')
-        self.window.addstr(5, 2, '- registered server will be saved when terminated. (server_list.json)')
-        self.window.addstr(6, 2, '- make "~/.kinit_passwd" to execute kinit automatically.')
-        self.window.addstr(7, 2, '- enter a keyword to filter the list.')
-        self.window.addstr(8, 2, '- search for hosts, tags, and descriptions using case-insensitive keywords.')
+        safe_addstr(self.window, 0, 5, 'Help')
+        safe_addstr(self.window, 1, 2, '[/]: change user to rlogin, [,]: change rlogin/ssh')
+        safe_addstr(self.window, 2, 2, '[ctrl-n]: register new server     [ctrl-d]: delete server')
+        safe_addstr(self.window, 3, 2, '[ctrl-e]: modify server           [ctrl-c]: quit or close popup window')
+        safe_addstr(self.window, 4, 2, '[ctrl-l]: load old gw file        [ctrl-r]: reset popup input')
+        safe_addstr(self.window, 5, 2, '- registered server will be saved when terminated. (server_list.json)')
+        safe_addstr(self.window, 6, 2, '- make "~/.kinit_passwd" to execute kinit automatically.')
+        safe_addstr(self.window, 7, 2, '- enter a keyword to filter the list.')
+        safe_addstr(self.window, 8, 2, '- search for hosts, tags, and descriptions using case-insensitive keywords.')
         self.window.refresh()
 
 
@@ -46,7 +77,7 @@ class UserWindow:
 
     def refresh_user_border(self):
         self.window.border(0)
-        self.window.addstr(1, 2, "user : " + self.user_state.get_user() + ", [ " + self.user_state.get_login_method() + " ]")
+        safe_addstr(self.window, 1, 2, "user : " + self.user_state.get_user() + ", [ " + self.user_state.get_login_method() + " ]")
         self.window.refresh()
 
 
@@ -71,9 +102,9 @@ class KeywordWindow:
         self.window.clrtoeol()
 
         prefix = "keyword : "
-        self.window.addstr(1, 2, prefix, curses.color_pair(0))
+        safe_addstr(self.window, 1, 2, prefix, curses.color_pair(0))
 
-        available_width = self.context.half_cols - 4 - len(prefix)
+        available_width = max(0, self.context.half_cols - 4 - len(prefix))
         display_width = max(available_width, len(self.context.keyword) + 5)
 
         if len(self.context.keyword) == 0:
@@ -82,7 +113,11 @@ class KeywordWindow:
             display_text = self.context.keyword + " " * (display_width - len(self.context.keyword))
 
         start_x = 2 + len(prefix)
+        max_x = self.context.half_cols - 2
         for i in range(min(display_width, available_width)):
+            if start_x + i >= max_x:
+                break
+
             if i < len(display_text):
                 char = display_text[i]
             else:
@@ -90,14 +125,11 @@ class KeywordWindow:
 
             if i == self.cursor_pos:
                 if char == " ":
-                    self.window.addstr(1, start_x + i, "_", curses.color_pair(2) | curses.A_BOLD)
+                    safe_addstr(self.window, 1, start_x + i, "_", curses.color_pair(2) | curses.A_BOLD)
                 else:
-                    self.window.addstr(1, start_x + i, char, curses.color_pair(1) | curses.A_BOLD)
+                    safe_addstr(self.window, 1, start_x + i, char, curses.color_pair(1) | curses.A_BOLD)
             else:
-                if i < len(self.context.keyword):
-                    self.window.addstr(1, start_x + i, char, curses.color_pair(0))
-                else:
-                    self.window.addstr(1, start_x + i, char, curses.color_pair(0))
+                safe_addstr(self.window, 1, start_x + i, char, curses.color_pair(0))
 
         self.window.refresh()
 
@@ -146,6 +178,10 @@ class ServerListWindow:
         self.window.scrollok(True)
 
     def _print_color_text(self, text, index, y, x, width):
+        max_y, max_x = self.window.getmaxyx()
+        if y < 0 or y >= max_y:
+            return
+
         keywords = list(map(lambda k: k.upper(), self.context.keyword.rstrip().split(' ')))
         for k in keywords:
             pattern = re.compile("(" + k + ")", re.IGNORECASE)
@@ -167,11 +203,11 @@ class ServerListWindow:
             if word.upper() in keywords:
                 color_index += 2
 
-            self.window.addstr(y, x + text_length, word, curses.color_pair(color_index))
+            safe_addstr(self.window, y, x + text_length, word, curses.color_pair(color_index))
             text_length += len(word)
 
         if width > 0 and text_length < width:
-            self.window.addstr(y, x + text_length, ''.ljust(width - text_length), curses.color_pair(color_index))
+            safe_addstr(self.window, y, x + text_length, ''.ljust(width - text_length), curses.color_pair(color_index))
 
     def refresh(self):
         sm = self.server_manager
@@ -182,10 +218,11 @@ class ServerListWindow:
 
         self.window.clear()
         self.window.border(0)
-        self.window.addstr(0, HOST_X, 'Host')
-        self.window.addstr(0, TAGS_X, 'Tags')
-        self.window.addstr(0, DESC_X, 'Description')
+        safe_addstr(self.window, 0, HOST_X, 'Host')
+        safe_addstr(self.window, 0, TAGS_X, 'Tags')
+        safe_addstr(self.window, 0, DESC_X, 'Description')
 
+        max_y = self.window.getmaxyx()[0]
         for (index, server) in enumerate(sm.filtered_servers):
             if index < sm.top:
                 continue
@@ -193,9 +230,13 @@ class ServerListWindow:
             if index > sm.bottom:
                 break
 
-            self._print_color_text(server['host'], index, index - sm.top + 2, HOST_X, sm.max_host + DEFAULT_PAD_LEN)
-            self._print_color_text(', '.join(server['tags']), index, index - sm.top + 2, TAGS_X, sm.max_tags + DEFAULT_PAD_LEN)
-            self._print_color_text(server['description'], index, index - sm.top + 2, DESC_X, -1)
+            row_y = index - sm.top + 2
+            if row_y >= max_y - 1:
+                break
+
+            self._print_color_text(server['host'], index, row_y, HOST_X, sm.max_host + DEFAULT_PAD_LEN)
+            self._print_color_text(', '.join(server['tags']), index, row_y, TAGS_X, sm.max_tags + DEFAULT_PAD_LEN)
+            self._print_color_text(server['description'], index, row_y, DESC_X, -1)
         self.window.refresh()
 
 
@@ -254,52 +295,60 @@ class InputLabel:
         self.window.move(self.y, self.label_x)
         self.window.clrtoeol()
 
-        self.window.addstr(self.y, self.label_x, self.prefix + " ", curses.color_pair(5))
+        safe_addstr(self.window, self.y, self.label_x, self.prefix + " ", curses.color_pair(5))
 
+        max_x = self.window.getmaxyx()[1]
         display_width = max(20, len(self.value) + 5)
         display_text = self.value + " " * (display_width - len(self.value))
 
         for i in range(display_width):
+            if self.min_x + i >= max_x - 1:
+                break
+
             if i < len(display_text):
                 char = display_text[i]
             else:
                 char = " "
 
             if self.is_active and i == self.cursor_pos:
-                self.window.addstr(self.y, self.min_x + i, char, curses.color_pair(6))
+                safe_addstr(self.window, self.y, self.min_x + i, char, curses.color_pair(6))
             else:
-                self.window.addstr(self.y, self.min_x + i, char, curses.color_pair(7))
+                safe_addstr(self.window, self.y, self.min_x + i, char, curses.color_pair(7))
 
     def print_label(self, y, x):
         self.y = y
         self.label_x = x
 
-        self.window.addstr(y, x, self.prefix + " ", curses.color_pair(5))
+        safe_addstr(self.window, y, x, self.prefix + " ", curses.color_pair(5))
 
+        max_x = self.window.getmaxyx()[1]
         display_width = max(20, len(self.value) + 5)
         display_text = self.value + " " * (display_width - len(self.value))
 
         for i in range(display_width):
+            if self.min_x + i >= max_x - 1:
+                break
+
             if i < len(display_text):
                 char = display_text[i]
             else:
                 char = " "
 
             if self.is_active and i == self.cursor_pos:
-                self.window.addstr(y, self.min_x + i, char, curses.color_pair(6))
+                safe_addstr(self.window, y, self.min_x + i, char, curses.color_pair(6))
             else:
-                self.window.addstr(y, self.min_x + i, char, curses.color_pair(7))
+                safe_addstr(self.window, y, self.min_x + i, char, curses.color_pair(7))
 
 
 class LoadTipsServerList:
     def __init__(self, context, sso_id=None, sso_pw=None):
-        half_cols = int(context.cols / 2) - 50
+        h, w, y, x = calc_popup_dims(context, desired_width=100, desired_height=12)
         self.context = context
-        self.window = curses.newwin(12, 100, self.context.top_help_rows + self.context.top_win_rows + 4, half_cols)
+        self.window = curses.newwin(h, w, y, x)
         self.window.border(0)
         self.window.scrollok(True)
         self.window.keypad(True)
-        self.window.addstr(0, 5, 'Input Your SSO INFO')
+        safe_addstr(self.window, 0, 5, 'Input Your SSO INFO')
         self.window.bkgd(' ', curses.color_pair(5))
 
         self.padding_top = 2
@@ -326,10 +375,12 @@ class LoadTipsServerList:
         self.input_labels[self.input_label_idx].process_key(key)
 
     def process(self):
-        while (True):
+        while True:
             try:
                 c = self.window.getch()
-                if c == curses.KEY_UP:
+                if c == curses.KEY_RESIZE:
+                    raise ResizeRequested()
+                elif c == curses.KEY_UP:
                     self._move_cursor(-1)
                 elif c == curses.KEY_DOWN:
                     self._move_cursor(+1)
@@ -351,23 +402,25 @@ class LoadTipsServerList:
 
 class LoadOldGwFilePopupWindow:
     def __init__(self, context):
-        half_cols = int(context.cols / 2) - 50
-        self.window = curses.newwin(3, 100, context.top_help_rows + context.top_win_rows + 4, half_cols)
+        h, w, y, x = calc_popup_dims(context, desired_width=100, desired_height=3)
+        self.window = curses.newwin(h, w, y, x)
         self.window.border(0)
         self.window.scrollok(True)
         curses.curs_set(0)
 
-        self.window.addstr(0, 5, 'Load old gateway .known_hosts (.known_host can be omitted)')
+        safe_addstr(self.window, 0, 5, 'Load old gateway .known_hosts (.known_host can be omitted)')
         self.window.bkgd(' ', curses.color_pair(5))
         self.path_input_label = InputLabel(self.window, 2, 'Path :', os.path.expanduser('~'))
         self.path_input_label.set_active(True)
         self.path_input_label.print_label(1, 2)
 
     def process(self):
-        while (True):
+        while True:
             try:
                 c = self.window.getch()
-                if c == ord('\n'):
+                if c == curses.KEY_RESIZE:
+                    raise ResizeRequested()
+                elif c == ord('\n'):
                     return self.path_input_label.value
                 else:
                     self.path_input_label.process_key(c)
@@ -377,20 +430,20 @@ class LoadOldGwFilePopupWindow:
 
 class ServerPopupWindow:
     def __init__(self, context, server_manager, host=None, description=None, tags=None):
-        half_cols = int(context.cols / 2) - 50
+        h, w, y, x = calc_popup_dims(context, desired_width=100, desired_height=12)
         self.context = context
         self.server_manager = server_manager
         self.original_host = host
-        self.window = curses.newwin(12, 100, self.context.top_help_rows + self.context.top_win_rows + 4, half_cols)
+        self.window = curses.newwin(h, w, y, x)
         self.window.border(0)
         self.window.scrollok(True)
         self.window.keypad(True)
         curses.curs_set(0)
 
         if self.original_host is None:
-            self.window.addstr(0, 5, 'Register')
+            safe_addstr(self.window, 0, 5, 'Register')
         else:
-            self.window.addstr(0, 5, 'Modify')
+            safe_addstr(self.window, 0, 5, 'Modify')
         self.window.bkgd(' ', curses.color_pair(5))
 
         self.padding_top = 2
@@ -429,10 +482,12 @@ class ServerPopupWindow:
         )
 
     def process(self):
-        while (True):
+        while True:
             try:
                 c = self.window.getch()
-                if c == curses.KEY_UP:
+                if c == curses.KEY_RESIZE:
+                    raise ResizeRequested()
+                elif c == curses.KEY_UP:
                     self._move_cursor(-1)
                 elif c == curses.KEY_DOWN:
                     self._move_cursor(+1)
@@ -444,9 +499,9 @@ class ServerPopupWindow:
                             'tags': list(filter(lambda s: s != '', re.split(',| ', self.tags_input_label.value)))
                         }
                     else:
-                        self.window.addstr(self.padding_top + 1, self.padding_left, 'Duplicated Host !!!', curses.color_pair(4))
+                        safe_addstr(self.window, self.padding_top + 1, self.padding_left, 'Duplicated Host !!!', curses.color_pair(4))
                         self.window.getch()
-                        self.window.addstr(self.padding_top + 1, self.padding_left, '                         ')
+                        safe_addstr(self.window, self.padding_top + 1, self.padding_left, '                         ')
                         self._move_cursor(0)
                 else:
                     self._process_key(c)
