@@ -9,9 +9,9 @@ from ui.widget import InputLabel  # noqa: F401 (re-export)
 
 
 class HelpPanel:
-    def __init__(self, context):
+    def __init__(self, context, y, height):
         self.context = context
-        self.window = curses.newwin(context.top_help_rows, context.cols, 0, 0)
+        self.window = curses.newwin(height, context.cols, y, 0)
         self.window.scrollok(True)
         self.refresh()
 
@@ -37,10 +37,9 @@ class HelpPanel:
 
 
 class GroupContextPanel:
-    def __init__(self, context):
+    def __init__(self, context, y, height):
         self.context = context
-        y = context.top_help_rows
-        self.window = curses.newwin(context.group_context_rows, context.cols, y, 0)
+        self.window = curses.newwin(height, context.cols, y, 0)
         self.window.scrollok(True)
         self.refresh()
 
@@ -56,11 +55,10 @@ class GroupContextPanel:
 
 
 class UserPanel:
-    def __init__(self, context, user_state):
+    def __init__(self, context, user_state, y, height):
         self.context = context
         self.user_state = user_state
-        y = context.top_help_rows + context.group_context_rows
-        self.window = curses.newwin(self.context.top_win_rows, self.context.half_cols, y, 0)
+        self.window = curses.newwin(height, context.half_cols, y, 0)
         self.window.scrollok(True)
         self.refresh_user_border()
 
@@ -81,10 +79,9 @@ class UserPanel:
 
 
 class KeywordPanel:
-    def __init__(self, context):
+    def __init__(self, context, y, height):
         self.context = context
-        y = context.top_help_rows + context.group_context_rows
-        self.window = curses.newwin(self.context.top_win_rows, self.context.half_cols, y, self.context.half_cols)
+        self.window = curses.newwin(height, context.half_cols, y, context.half_cols)
         self.window.scrollok(True)
         self.window.keypad(True)
         self.window.border(0)
@@ -142,14 +139,11 @@ class KeywordPanel:
 
 
 class ServerListPanel:
-    def __init__(self, context, server_manager):
+    def __init__(self, context, server_manager, y, height):
         self.context = context
         self.server_manager = server_manager
-        top_y = context.top_help_rows + context.group_context_rows + context.top_win_rows
-        self.window = curses.newwin(self.context.rows - top_y,
-                                    self.context.cols,
-                                    top_y,
-                                    0)
+        self.height = height
+        self.window = curses.newwin(height, context.cols, y, 0)
         self.window.scrollok(True)
 
     def _print_color_text(self, text, index, y, x, width):

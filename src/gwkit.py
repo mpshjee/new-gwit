@@ -10,6 +10,7 @@ from core import Context, UserState, ServerManager, ServerGroupManager, ResizeRe
 from ui import (HelpPanel, GroupContextPanel, UserPanel, KeywordPanel, ServerListPanel,
                 ServerPopup, CommandPrompt, show_status_message,
                 GroupSelectPopup, AddServerToGroupPopup)
+from ui.layout import VerticalLayout
 
 logger = logging.getLogger('gwkit')
 logger.addHandler(logging.FileHandler('gwkit.log'))
@@ -64,12 +65,19 @@ def rebuild_all_windows(stdscr, context, user_state, server_manager, server_grou
         stdscr.refresh()
         return None, None, None, None, None
 
-    help_win = HelpPanel(context)
-    group_ctx_win = GroupContextPanel(context)
-    user_win = UserPanel(context, user_state)
-    keyword_win = KeywordPanel(context)
+    layout = VerticalLayout(rows, cols)
+    help_slot = layout.add(context.top_help_rows)
+    group_ctx_slot = layout.add(context.group_context_rows)
+    user_slot = layout.add(context.top_win_rows)
+    list_slot = layout.fill()
+
+    help_win = HelpPanel(context, *help_slot)
+    group_ctx_win = GroupContextPanel(context, *group_ctx_slot)
+    user_win = UserPanel(context, user_state, *user_slot)
+    keyword_win = KeywordPanel(context, *user_slot)
+    server_manager.list_height = list_slot[1]
     server_manager.filter()
-    server_list_win = ServerListPanel(context, server_manager)
+    server_list_win = ServerListPanel(context, server_manager, *list_slot)
     server_list_win.refresh()
     keyword_win.refresh()
     return help_win, group_ctx_win, user_win, server_list_win, keyword_win

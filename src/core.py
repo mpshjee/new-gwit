@@ -135,6 +135,7 @@ class ServerManager:
         self.max_host = 30
         self.max_tags = 30
         self.padding = 4
+        self.list_height = 0
         self.load_servers()
 
     def load_servers(self):
@@ -170,7 +171,7 @@ class ServerManager:
     def filter(self, selected_server_idx=None):
         self.filtered_servers = self.servers
         self.top = 0
-        self.bottom = self.context.rows - self.padding - self.context.top_win_rows - self.context.group_context_rows - self.context.top_help_rows
+        self.bottom = self.list_height - self.padding if self.list_height > 0 else 0
 
         if self.context.keyword != '':
             keywords = self.context.keyword.split(' ')
