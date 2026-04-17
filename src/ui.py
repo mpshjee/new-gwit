@@ -237,7 +237,8 @@ class ServerListWindow:
         self.window.clear()
         self.window.border(0)
         ctx_label = '[group: {}]'.format(self.context.active_group_name) if self.context.active_group_name else '[all]'
-        safe_addstr(self.window, 0, 2, ctx_label, curses.color_pair(8))
+        ctx_x = max(2, self.context.cols - len(ctx_label) - 2)
+        safe_addstr(self.window, 0, ctx_x, ctx_label, curses.color_pair(8))
         safe_addstr(self.window, 0, HOST_X, 'Host')
         safe_addstr(self.window, 0, TAGS_X, 'Tags')
         safe_addstr(self.window, 0, DESC_X, 'Description')
