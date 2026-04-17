@@ -7,9 +7,9 @@ import os
 import sys
 
 from core import Context, UserState, ServerManager, ServerGroupManager, ResizeRequested, kinit_password, init_server_list
-from ui import (HelpWindow, UserWindow, KeywordWindow, ServerListWindow,
-                ServerPopupWindow, CommandPromptWindow, show_status_message,
-                GroupSelectPopupWindow, AddServerToGroupPopupWindow)
+from ui import (HelpPanel, UserPanel, KeywordPanel, ServerListPanel,
+                ServerPopup, CommandPrompt, show_status_message,
+                GroupSelectPopup, AddServerToGroupPopup)
 
 logger = logging.getLogger('gwkit')
 logger.addHandler(logging.FileHandler('gwkit.log'))
@@ -64,11 +64,11 @@ def rebuild_all_windows(stdscr, context, user_state, server_manager, server_grou
         stdscr.refresh()
         return None, None, None, None
 
-    help_win = HelpWindow(context)
-    user_win = UserWindow(context, user_state)
-    keyword_win = KeywordWindow(context)
+    help_win = HelpPanel(context)
+    user_win = UserPanel(context, user_state)
+    keyword_win = KeywordPanel(context)
     server_manager.filter()
-    server_list_win = ServerListWindow(context, server_manager)
+    server_list_win = ServerListPanel(context, server_manager)
     server_list_win.refresh()
     keyword_win.refresh()
     return help_win, user_win, server_list_win, keyword_win
@@ -81,7 +81,7 @@ def _do_rebuild(wins, stdscr, context, user_state, server_manager, server_group_
 
 
 def _handle_command_mode(wins, stdscr, context, user_state, server_manager, server_group_manager):
-    cmd_str, resized = run_popup(lambda: CommandPromptWindow(context).process())
+    cmd_str, resized = run_popup(lambda: CommandPrompt(context).process())
     if resized:
         if not _do_rebuild(wins, stdscr, context, user_state, server_manager, server_group_manager):
             return
@@ -108,7 +108,7 @@ def _handle_modify_server(wins, stdscr, context, user_state, server_manager, ser
     current_server = server_manager.get_current_server()
     if current_server is not None:
         new_server, resized = run_popup(
-            lambda: ServerPopupWindow(context, server_manager,
+            lambda: ServerPopup(context, server_manager,
                                       current_server['host'],
                                       current_server['description'],
                                       current_server['tags']).process())
@@ -125,7 +125,7 @@ def _handle_modify_server(wins, stdscr, context, user_state, server_manager, ser
 
 def _handle_register_server(wins, stdscr, context, user_state, server_manager, server_group_manager):
     new_server, resized = run_popup(
-        lambda: ServerPopupWindow(context, server_manager).process())
+        lambda: ServerPopup(context, server_manager).process())
     if resized:
         if not _do_rebuild(wins, stdscr, context, user_state, server_manager, server_group_manager):
             return
@@ -137,7 +137,7 @@ def _handle_register_server(wins, stdscr, context, user_state, server_manager, s
 
 def _handle_add_to_group(wins, stdscr, context, user_state, server_manager, server_group_manager):
     non_members = server_group_manager.get_non_member_hosts(context.active_group_name, server_manager.servers)
-    host, resized = run_popup(lambda: AddServerToGroupPopupWindow(context, non_members).process())
+    host, resized = run_popup(lambda: AddServerToGroupPopup(context, non_members).process())
     if resized:
         if not _do_rebuild(wins, stdscr, context, user_state, server_manager, server_group_manager):
             return
@@ -149,7 +149,7 @@ def _handle_add_to_group(wins, stdscr, context, user_state, server_manager, serv
 
 
 def _handle_group_select(wins, stdscr, context, user_state, server_manager, server_group_manager):
-    new_group, resized = run_popup(lambda: GroupSelectPopupWindow(context, server_group_manager).process())
+    new_group, resized = run_popup(lambda: GroupSelectPopup(context, server_group_manager).process())
     if resized:
         if not _do_rebuild(wins, stdscr, context, user_state, server_manager, server_group_manager):
             return
