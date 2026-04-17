@@ -39,7 +39,6 @@ class Context:
         self.top_help_rows = 10
         self.top_win_rows = 3
         self.login_method_idx = 1
-        self.view_mode = 'all'
         self.active_group_name = ''
 
     def update_dimensions(self, rows, cols):
@@ -124,8 +123,9 @@ class ServerGroupManager:
 
 
 class ServerManager:
-    def __init__(self, context):
+    def __init__(self, context, server_group_manager):
         self.context = context
+        self.server_group_manager = server_group_manager
         self.servers = []
         self.filtered_servers = []
         self.selected_server_idx = -1
@@ -175,6 +175,10 @@ class ServerManager:
             keywords = self.context.keyword.split(' ')
             for k in keywords:
                 self.filtered_servers = list(filter(lambda s: self._is_matched(s, k), self.filtered_servers))
+
+        if self.context.active_group_name:
+            group_hosts = set(self.server_group_manager.get_hosts_in_group(self.context.active_group_name))
+            self.filtered_servers = [s for s in self.filtered_servers if s['host'] in group_hosts]
 
         if selected_server_idx is None or selected_server_idx > len(self.filtered_servers) - 1:
             self.selected_server_idx = -1

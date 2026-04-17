@@ -6,9 +6,10 @@ import logging
 import os
 import sys
 
-from core import Context, UserState, ServerManager, ResizeRequested, kinit_password, init_server_list
+from core import Context, UserState, ServerManager, ServerGroupManager, ResizeRequested, kinit_password, init_server_list
 from ui import (HelpWindow, UserWindow, KeywordWindow, ServerListWindow,
-                ServerPopupWindow, CommandPromptWindow, show_status_message)
+                ServerPopupWindow, CommandPromptWindow, show_status_message,
+                GroupSelectPopupWindow, AddServerToGroupPopupWindow)
 
 logger = logging.getLogger('gwkit')
 logger.addHandler(logging.FileHandler('gwkit.log'))
@@ -31,10 +32,8 @@ def execute_command(cmd_str, context, server_group_manager=None):
     args = parts[1:]
 
     if cmd == 'groups':
-        context.view_mode = 'group_list'
-        return 'ok', None
+        return 'open_groups', None
     elif cmd == 'all':
-        context.view_mode = 'all'
         context.active_group_name = ''
         return 'ok', None
     elif cmd == 'group':
@@ -43,7 +42,6 @@ def execute_command(cmd_str, context, server_group_manager=None):
         name = args[0]
         if server_group_manager is not None and name not in server_group_manager.groups:
             return 'error', 'group not found: ' + name
-        context.view_mode = 'group_detail'
         context.active_group_name = name
         return 'ok', None
     elif cmd in ('quit', 'q'):
@@ -52,7 +50,7 @@ def execute_command(cmd_str, context, server_group_manager=None):
         return 'error', 'unknown command: ' + cmd
 
 
-def rebuild_all_windows(stdscr, context, user_state, server_manager):
+def rebuild_all_windows(stdscr, context, user_state, server_manager, server_group_manager):
     stdscr.clear()
     rows, cols = stdscr.getmaxyx()
     context.update_dimensions(rows, cols)
@@ -76,31 +74,37 @@ def rebuild_all_windows(stdscr, context, user_state, server_manager):
     return help_win, user_win, server_list_win, keyword_win
 
 
-def _do_rebuild(wins, stdscr, context, user_state, server_manager):
-    new_wins = rebuild_all_windows(stdscr, context, user_state, server_manager)
+def _do_rebuild(wins, stdscr, context, user_state, server_manager, server_group_manager):
+    new_wins = rebuild_all_windows(stdscr, context, user_state, server_manager, server_group_manager)
     wins['help'], wins['user'], wins['list'], wins['keyword'] = new_wins
     return wins['keyword'] is not None
 
 
-def _handle_command_mode(wins, stdscr, context, user_state, server_manager):
+def _handle_command_mode(wins, stdscr, context, user_state, server_manager, server_group_manager):
     cmd_str, resized = run_popup(lambda: CommandPromptWindow(context).process())
     if resized:
-        if not _do_rebuild(wins, stdscr, context, user_state, server_manager):
+        if not _do_rebuild(wins, stdscr, context, user_state, server_manager, server_group_manager):
             return
     elif cmd_str is not None:
-        result, message = execute_command(cmd_str, context)
+        result, message = execute_command(cmd_str, context, server_group_manager)
         if result == 'quit':
             curses.endwin()
             server_manager.save_to_json()
+            server_group_manager.save()
             print('Goodbye :)')
             sys.exit()
         elif result == 'error':
             show_status_message(context, 'error: ' + message)
+        elif result == 'open_groups':
+            _handle_group_select(wins, stdscr, context, user_state, server_manager, server_group_manager)
+            return
         elif result == 'ok':
-            wins['help'].refresh()
+            server_manager.filter()
+            wins['list'].refresh()
+        wins['help'].refresh()
 
 
-def _handle_modify_server(wins, stdscr, context, user_state, server_manager):
+def _handle_modify_server(wins, stdscr, context, user_state, server_manager, server_group_manager):
     current_server = server_manager.get_current_server()
     if current_server is not None:
         new_server, resized = run_popup(
@@ -109,7 +113,7 @@ def _handle_modify_server(wins, stdscr, context, user_state, server_manager):
                                       current_server['description'],
                                       current_server['tags']).process())
         if resized:
-            if not _do_rebuild(wins, stdscr, context, user_state, server_manager):
+            if not _do_rebuild(wins, stdscr, context, user_state, server_manager, server_group_manager):
                 return
         elif new_server is not None:
             current_server['host'] = new_server['host']
@@ -119,16 +123,45 @@ def _handle_modify_server(wins, stdscr, context, user_state, server_manager):
     wins['list'].refresh()
 
 
-def _handle_register_server(wins, stdscr, context, user_state, server_manager):
+def _handle_register_server(wins, stdscr, context, user_state, server_manager, server_group_manager):
     new_server, resized = run_popup(
         lambda: ServerPopupWindow(context, server_manager).process())
     if resized:
-        if not _do_rebuild(wins, stdscr, context, user_state, server_manager):
+        if not _do_rebuild(wins, stdscr, context, user_state, server_manager, server_group_manager):
             return
     elif new_server is not None:
         server_manager.insert_server(new_server)
         server_manager.refresh_max()
     wins['list'].refresh()
+
+
+def _handle_add_to_group(wins, stdscr, context, user_state, server_manager, server_group_manager):
+    non_members = server_group_manager.get_non_member_hosts(context.active_group_name, server_manager.servers)
+    host, resized = run_popup(lambda: AddServerToGroupPopupWindow(context, non_members).process())
+    if resized:
+        if not _do_rebuild(wins, stdscr, context, user_state, server_manager, server_group_manager):
+            return
+    elif host is not None:
+        server_group_manager.add_to_group(host, context.active_group_name)
+        server_group_manager.save()
+        server_manager.filter()
+    wins['list'].refresh()
+
+
+def _handle_group_select(wins, stdscr, context, user_state, server_manager, server_group_manager):
+    new_group, resized = run_popup(lambda: GroupSelectPopupWindow(context, server_group_manager).process())
+    if resized:
+        if not _do_rebuild(wins, stdscr, context, user_state, server_manager, server_group_manager):
+            return
+    else:
+        if new_group is not None:
+            context.active_group_name = new_group
+        # 팝업 안에서 현재 컨텍스트 그룹이 삭제되었을 경우 폴백
+        if context.active_group_name and context.active_group_name not in server_group_manager.groups:
+            context.active_group_name = ''
+        server_manager.filter()
+        wins['list'].refresh()
+        wins['help'].refresh()
 
 
 def main(stdscr):
@@ -144,17 +177,19 @@ def main(stdscr):
     curses.init_pair(5, curses.COLOR_BLACK, curses.COLOR_WHITE)
     curses.init_pair(6, curses.COLOR_WHITE, curses.COLOR_BLACK)
     curses.init_pair(7, curses.COLOR_BLACK, curses.COLOR_WHITE)
+    curses.init_pair(8, curses.COLOR_YELLOW, -1)
 
     context = Context()
     user_state = UserState(context)
-    server_manager = ServerManager(context)
+    server_group_manager = ServerGroupManager()
+    server_manager = ServerManager(context, server_group_manager)
     server_manager.filter()
 
     wins = {'help': None, 'user': None, 'list': None, 'keyword': None}
-    _do_rebuild(wins, stdscr, context, user_state, server_manager)
+    _do_rebuild(wins, stdscr, context, user_state, server_manager, server_group_manager)
 
     def _rebuild():
-        return _do_rebuild(wins, stdscr, context, user_state, server_manager)
+        return _do_rebuild(wins, stdscr, context, user_state, server_manager, server_group_manager)
 
     simple_handlers = {
         ord('/'): lambda: wins['user'].change_user(),
@@ -163,25 +198,36 @@ def main(stdscr):
     }
 
     def _handle_key(c):
-        # 단순 핸들러 (rebuild 불필요)
         handler = simple_handlers.get(c)
         if handler is not None:
             handler()
             return
 
-        # 팝업/복합 핸들러
         if c == ord(':'):
-            _handle_command_mode(wins, stdscr, context, user_state, server_manager)
+            _handle_command_mode(wins, stdscr, context, user_state, server_manager, server_group_manager)
+            return
+        elif c == 7:  # Ctrl+G: 그룹 선택 팝업
+            _handle_group_select(wins, stdscr, context, user_state, server_manager, server_group_manager)
             return
         elif c == 5:  # Ctrl+E
-            _handle_modify_server(wins, stdscr, context, user_state, server_manager)
+            _handle_modify_server(wins, stdscr, context, user_state, server_manager, server_group_manager)
             return
         elif c == 14:  # Ctrl+N
-            _handle_register_server(wins, stdscr, context, user_state, server_manager)
+            if context.active_group_name:
+                _handle_add_to_group(wins, stdscr, context, user_state, server_manager, server_group_manager)
+            else:
+                _handle_register_server(wins, stdscr, context, user_state, server_manager, server_group_manager)
             return
         elif c == 4:  # Ctrl+D
-            server_manager.delete_current_server()
-            server_manager.refresh_max()
+            if context.active_group_name:
+                current = server_manager.get_current_server()
+                if current:
+                    server_group_manager.remove_from_group(current['host'], context.active_group_name)
+                    server_group_manager.save()
+                    server_manager.filter()
+            else:
+                server_manager.delete_current_server()
+                server_manager.refresh_max()
             wins['list'].refresh()
         elif c == curses.KEY_UP:
             server_manager.select_up(1)
@@ -223,6 +269,7 @@ def main(stdscr):
         except KeyboardInterrupt:
             curses.endwin()
             server_manager.save_to_json()
+            server_group_manager.save()
             print('Goodbye :)')
             sys.exit()
 
