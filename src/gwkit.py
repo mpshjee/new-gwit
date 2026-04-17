@@ -13,7 +13,7 @@ from fetch import init_server_list
 from ui import (HelpPanel, GroupContextPanel, UserPanel, KeywordPanel, ServerListPanel,
                 ServerPopup, CommandPrompt, show_status_message,
                 GroupSelectPopup, AddServerToGroupPopup)
-from ui.layout import VerticalLayout
+from ui.layout import VerticalLayout, HELP_ROWS, GROUP_CTX_ROWS, TOP_WIN_ROWS
 
 logger = logging.getLogger('gwkit')
 logger.addHandler(logging.FileHandler('gwkit.log'))
@@ -69,9 +69,9 @@ def rebuild_all_windows(stdscr, context, user_state, server_manager, server_grou
         return None, None, None, None, None
 
     layout = VerticalLayout(rows, cols)
-    help_slot = layout.add(context.top_help_rows)
-    group_ctx_slot = layout.add(context.group_context_rows)
-    user_slot = layout.add(context.top_win_rows)
+    help_slot = layout.add(HELP_ROWS)
+    group_ctx_slot = layout.add(GROUP_CTX_ROWS)
+    user_slot = layout.add(TOP_WIN_ROWS)
     list_slot = layout.fill()
 
     help_win = HelpPanel(context, *help_slot)

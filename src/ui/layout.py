@@ -2,6 +2,11 @@
 # -*- coding: utf-8 -*-
 
 
+HELP_ROWS = 10
+GROUP_CTX_ROWS = 3
+TOP_WIN_ROWS = 3
+
+
 class VerticalLayout:
     def __init__(self, rows, cols):
         self.rows = rows

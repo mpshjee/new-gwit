@@ -12,9 +12,6 @@ class Context:
         self.rows = 0
         self.cols = 0
         self.half_cols = 0
-        self.top_help_rows = 10
-        self.group_context_rows = 3
-        self.top_win_rows = 3
         self.login_method_idx = 1
         self.active_group_name = ''
 
