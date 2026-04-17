@@ -2,15 +2,11 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import os
 
+from config import server_list_json_file as _server_list_json_file
 from fetch import auth, cli_io, store, tips_client
 
 logger = logging.getLogger('gwkit')
-
-_fetch_dir = os.path.dirname(os.path.realpath(__file__))
-_server_list_json_file = '{0}/server_list.json'.format(
-    os.path.dirname(os.path.dirname(_fetch_dir)))
 
 
 def init_server_list():

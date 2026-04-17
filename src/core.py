@@ -5,18 +5,9 @@ import json
 import logging
 import os
 
+from config import server_list_json_file, server_groups_json_file
+
 logger = logging.getLogger('gwkit')
-
-# gwkit path file
-script_path = os.path.dirname(os.path.realpath(__file__))
-project_root = os.path.dirname(script_path)
-kinit_password = os.path.expanduser('~/.kinit_passwd')
-server_list_json_file = '{0}/server_list.json'.format(project_root)
-server_groups_json_file = '{0}/server_groups.json'.format(project_root)
-
-
-class ResizeRequested(Exception):
-    pass
 
 
 class Context:

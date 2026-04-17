@@ -5,7 +5,7 @@ import curses
 
 from ui.util import safe_addstr, calc_popup_dims
 from ui.widget import ScrollableList
-from core import ResizeRequested
+from config import ResizeRequested
 
 
 class GroupSelectPopup:

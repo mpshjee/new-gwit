@@ -7,7 +7,7 @@ import re
 
 from ui.util import safe_addstr, calc_popup_dims
 from ui.widget import FormInput
-from core import ResizeRequested
+from config import ResizeRequested
 
 logger = logging.getLogger('gwkit')
 

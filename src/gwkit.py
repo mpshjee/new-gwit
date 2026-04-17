@@ -6,7 +6,8 @@ import logging
 import os
 import sys
 
-from core import Context, UserState, ServerManager, ServerGroupManager, ResizeRequested, kinit_password
+from config import ResizeRequested, kinit_password
+from core import Context, UserState, ServerManager, ServerGroupManager
 from fetch import init_server_list
 from ui import (HelpPanel, GroupContextPanel, UserPanel, KeywordPanel, ServerListPanel,
                 ServerPopup, CommandPrompt, show_status_message,
