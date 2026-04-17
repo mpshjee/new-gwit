@@ -99,8 +99,6 @@ def _handle_command_mode(wins, stdscr, context, user_state, server_manager):
         elif result == 'ok':
             wins['help'].refresh()
 
-    wins['list'].refresh()
-
 
 def _handle_modify_server(wins, stdscr, context, user_state, server_manager):
     current_server = server_manager.get_current_server()
