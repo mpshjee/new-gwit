@@ -6,7 +6,7 @@ import logging
 import re
 
 from ui.util import safe_addstr, calc_popup_dims
-from ui.panel import InputLabel
+from ui.widget import InputLabel
 from core import ResizeRequested
 
 logger = logging.getLogger('gwkit')

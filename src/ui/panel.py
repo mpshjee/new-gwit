@@ -5,6 +5,7 @@ import curses
 import re
 
 from ui.util import safe_addstr, handle_line_edit_key
+from ui.widget import InputLabel  # noqa: F401 (re-export)
 
 
 class HelpPanel:
@@ -193,58 +194,3 @@ class ServerListPanel:
             self._print_color_text(', '.join(server['tags']), index, row_y, TAGS_X, sm.max_tags + DEFAULT_PAD_LEN)
             self._print_color_text(server['description'], index, row_y, DESC_X, -1)
         self.window.refresh()
-
-
-class InputLabel:
-    def __init__(self, window, padding_left, prefix, value=None):
-        self.window = window
-        self.prefix = prefix
-        self.value = ''
-        if value is not None:
-            self.value = value
-        self.min_x = padding_left + len(self.prefix) + 1
-        self.x = self.min_x + len(self.value)
-        self.cursor_pos = len(self.value)
-        self.y = 0
-        self.label_x = 0
-        self.is_active = False
-
-    def process_key(self, key):
-        new_value, new_pos, changed = handle_line_edit_key(key, self.value, self.cursor_pos)
-        if changed:
-            self.value = new_value
-            self.cursor_pos = new_pos
-            self.refresh_display()
-
-    def set_active(self, active):
-        self.is_active = active
-        self.refresh_display()
-
-    def refresh_display(self):
-        self.window.move(self.y, self.label_x)
-        self.window.clrtoeol()
-
-        safe_addstr(self.window, self.y, self.label_x, self.prefix + " ", curses.color_pair(5))
-
-        max_x = self.window.getmaxyx()[1]
-        display_width = max(20, len(self.value) + 5)
-        display_text = self.value + " " * (display_width - len(self.value))
-
-        for i in range(display_width):
-            if self.min_x + i >= max_x - 1:
-                break
-
-            if i < len(display_text):
-                char = display_text[i]
-            else:
-                char = " "
-
-            if self.is_active and i == self.cursor_pos:
-                safe_addstr(self.window, self.y, self.min_x + i, char, curses.color_pair(6))
-            else:
-                safe_addstr(self.window, self.y, self.min_x + i, char, curses.color_pair(7))
-
-    def print_label(self, y, x):
-        self.y = y
-        self.label_x = x
-        self.refresh_display()
