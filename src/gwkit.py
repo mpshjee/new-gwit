@@ -7,7 +7,7 @@ import os
 import sys
 
 from core import Context, UserState, ServerManager, ServerGroupManager, ResizeRequested, kinit_password, init_server_list
-from ui import (HelpPanel, UserPanel, KeywordPanel, ServerListPanel,
+from ui import (HelpPanel, GroupContextPanel, UserPanel, KeywordPanel, ServerListPanel,
                 ServerPopup, CommandPrompt, show_status_message,
                 GroupSelectPopup, AddServerToGroupPopup)
 
@@ -62,21 +62,22 @@ def rebuild_all_windows(stdscr, context, user_state, server_manager, server_grou
         except curses.error:
             pass
         stdscr.refresh()
-        return None, None, None, None
+        return None, None, None, None, None
 
     help_win = HelpPanel(context)
+    group_ctx_win = GroupContextPanel(context)
     user_win = UserPanel(context, user_state)
     keyword_win = KeywordPanel(context)
     server_manager.filter()
     server_list_win = ServerListPanel(context, server_manager)
     server_list_win.refresh()
     keyword_win.refresh()
-    return help_win, user_win, server_list_win, keyword_win
+    return help_win, group_ctx_win, user_win, server_list_win, keyword_win
 
 
 def _do_rebuild(wins, stdscr, context, user_state, server_manager, server_group_manager):
     new_wins = rebuild_all_windows(stdscr, context, user_state, server_manager, server_group_manager)
-    wins['help'], wins['user'], wins['list'], wins['keyword'] = new_wins
+    wins['help'], wins['group_ctx'], wins['user'], wins['list'], wins['keyword'] = new_wins
     return wins['keyword'] is not None
 
 
@@ -101,6 +102,7 @@ def _handle_command_mode(wins, stdscr, context, user_state, server_manager, serv
         elif result == 'ok':
             server_manager.filter()
             wins['list'].refresh()
+            wins['group_ctx'].refresh()
         wins['help'].refresh()
 
 
@@ -161,6 +163,7 @@ def _handle_group_select(wins, stdscr, context, user_state, server_manager, serv
             context.active_group_name = ''
         server_manager.filter()
         wins['list'].refresh()
+        wins['group_ctx'].refresh()
         wins['help'].refresh()
 
 
@@ -185,7 +188,7 @@ def main(stdscr):
     server_manager = ServerManager(context, server_group_manager)
     server_manager.filter()
 
-    wins = {'help': None, 'user': None, 'list': None, 'keyword': None}
+    wins = {'help': None, 'group_ctx': None, 'user': None, 'list': None, 'keyword': None}
     _do_rebuild(wins, stdscr, context, user_state, server_manager, server_group_manager)
 
     def _rebuild():

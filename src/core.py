@@ -37,6 +37,7 @@ class Context:
         self.cols = 0
         self.half_cols = 0
         self.top_help_rows = 10
+        self.group_context_rows = 3
         self.top_win_rows = 3
         self.login_method_idx = 1
         self.active_group_name = ''
@@ -169,7 +170,7 @@ class ServerManager:
     def filter(self, selected_server_idx=None):
         self.filtered_servers = self.servers
         self.top = 0
-        self.bottom = self.context.rows - self.padding - self.context.top_win_rows - self.context.top_help_rows
+        self.bottom = self.context.rows - self.padding - self.context.top_win_rows - self.context.group_context_rows - self.context.top_help_rows
 
         if self.context.keyword != '':
             keywords = self.context.keyword.split(' ')

@@ -36,11 +36,31 @@ class HelpPanel:
         self.window.refresh()
 
 
+class GroupContextPanel:
+    def __init__(self, context):
+        self.context = context
+        y = context.top_help_rows
+        self.window = curses.newwin(context.group_context_rows, context.cols, y, 0)
+        self.window.scrollok(True)
+        self.refresh()
+
+    def refresh(self):
+        self.window.clear()
+        self.window.border(0)
+        if self.context.active_group_name:
+            label = 'current server group : ' + self.context.active_group_name
+        else:
+            label = 'current server group : all'
+        safe_addstr(self.window, 1, 2, label, curses.color_pair(8))
+        self.window.refresh()
+
+
 class UserPanel:
     def __init__(self, context, user_state):
         self.context = context
         self.user_state = user_state
-        self.window = curses.newwin(self.context.top_win_rows, self.context.half_cols, self.context.top_help_rows, 0)
+        y = context.top_help_rows + context.group_context_rows
+        self.window = curses.newwin(self.context.top_win_rows, self.context.half_cols, y, 0)
         self.window.scrollok(True)
         self.refresh_user_border()
 
@@ -63,7 +83,8 @@ class UserPanel:
 class KeywordPanel:
     def __init__(self, context):
         self.context = context
-        self.window = curses.newwin(self.context.top_win_rows, self.context.half_cols, self.context.top_help_rows, self.context.half_cols)
+        y = context.top_help_rows + context.group_context_rows
+        self.window = curses.newwin(self.context.top_win_rows, self.context.half_cols, y, self.context.half_cols)
         self.window.scrollok(True)
         self.window.keypad(True)
         self.window.border(0)
@@ -120,27 +141,14 @@ class KeywordPanel:
             self.refresh_display()
 
 
-class GroupContextPanel:
-    def __init__(self, context):
-        self.context = context
-
-    def render(self, window, y):
-        if self.context.active_group_name:
-            label = '[group: {}]'.format(self.context.active_group_name)
-        else:
-            label = '[all]'
-        x = max(2, self.context.cols - len(label) - 2)
-        safe_addstr(window, y, x, label, curses.color_pair(8))
-
-
 class ServerListPanel:
     def __init__(self, context, server_manager):
         self.context = context
         self.server_manager = server_manager
-        self.group_context = GroupContextPanel(context)
-        self.window = curses.newwin(self.context.rows - self.context.top_help_rows - self.context.top_win_rows,
+        top_y = context.top_help_rows + context.group_context_rows + context.top_win_rows
+        self.window = curses.newwin(self.context.rows - top_y,
                                     self.context.cols,
-                                    self.context.top_help_rows + self.context.top_win_rows,
+                                    top_y,
                                     0)
         self.window.scrollok(True)
 
@@ -185,7 +193,6 @@ class ServerListPanel:
 
         self.window.clear()
         self.window.border(0)
-        self.group_context.render(self.window, 0)
         safe_addstr(self.window, 0, HOST_X, 'Host')
         safe_addstr(self.window, 0, TAGS_X, 'Tags')
         safe_addstr(self.window, 0, DESC_X, 'Description')
