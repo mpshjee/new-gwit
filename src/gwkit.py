@@ -76,6 +76,68 @@ def rebuild_all_windows(stdscr, context, user_state, server_manager):
     return help_win, user_win, server_list_win, keyword_win
 
 
+def _do_rebuild(wins, stdscr, context, user_state, server_manager):
+    new_wins = rebuild_all_windows(stdscr, context, user_state, server_manager)
+    wins['help'], wins['user'], wins['list'], wins['keyword'] = new_wins
+    return wins['keyword'] is not None
+
+
+def _handle_command_mode(wins, stdscr, context, user_state, server_manager):
+    cmd_str, resized = run_popup(lambda: CommandPromptWindow(context).process())
+    if resized:
+        if not _do_rebuild(wins, stdscr, context, user_state, server_manager):
+            return
+        wins['list'].refresh()
+        wins['keyword'].refresh()
+        return
+
+    if cmd_str is not None:
+        result, message = execute_command(cmd_str, context)
+        if result == 'quit':
+            curses.endwin()
+            server_manager.save_to_json()
+            print('Goodbye :)')
+            sys.exit()
+        elif result == 'error':
+            show_status_message(context, 'error: ' + message)
+        elif result == 'ok':
+            wins['help'].refresh()
+
+    wins['list'].refresh()
+    wins['keyword'].refresh()
+
+
+def _handle_modify_server(wins, stdscr, context, user_state, server_manager):
+    current_server = server_manager.get_current_server()
+    if current_server is not None:
+        new_server, resized = run_popup(
+            lambda: ServerPopupWindow(context, server_manager,
+                                      current_server['host'],
+                                      current_server['description'],
+                                      current_server['tags']).process())
+        if resized:
+            if not _do_rebuild(wins, stdscr, context, user_state, server_manager):
+                return
+        elif new_server is not None:
+            current_server['host'] = new_server['host']
+            current_server['description'] = new_server['description']
+            current_server['tags'] = new_server['tags']
+            server_manager.refresh_max()
+    wins['list'].refresh()
+
+
+def _handle_register_server(wins, stdscr, context, user_state, server_manager):
+    new_server, resized = run_popup(
+        lambda: ServerPopupWindow(context, server_manager).process())
+    if resized:
+        if not _do_rebuild(wins, stdscr, context, user_state, server_manager):
+            return
+    elif new_server is not None:
+        server_manager.insert_server(new_server)
+        server_manager.refresh_max()
+    wins['list'].refresh()
+
+
 def main(stdscr):
     curses.noecho()
     curses.cbreak()
@@ -95,115 +157,76 @@ def main(stdscr):
     server_manager = ServerManager(context)
     server_manager.filter()
 
-    help_win, user_win, server_list_win, keyword_win = rebuild_all_windows(
-        stdscr, context, user_state, server_manager)
+    wins = {'help': None, 'user': None, 'list': None, 'keyword': None}
+    _do_rebuild(wins, stdscr, context, user_state, server_manager)
+
+    def _rebuild():
+        return _do_rebuild(wins, stdscr, context, user_state, server_manager)
+
+    simple_handlers = {
+        ord('/'): lambda: wins['user'].change_user(),
+        ord(','): lambda: wins['user'].change_login_method(),
+        ord('\\'): lambda: wins['user'].change_login_method(),
+    }
+
+    def _handle_key(c):
+        # 단순 핸들러 (rebuild 불필요)
+        handler = simple_handlers.get(c)
+        if handler is not None:
+            handler()
+            return
+
+        # 팝업/복합 핸들러
+        if c == ord(':'):
+            _handle_command_mode(wins, stdscr, context, user_state, server_manager)
+            return
+        elif c == 5:  # Ctrl+E
+            _handle_modify_server(wins, stdscr, context, user_state, server_manager)
+            return
+        elif c == 14:  # Ctrl+N
+            _handle_register_server(wins, stdscr, context, user_state, server_manager)
+            return
+        elif c == 4:  # Ctrl+D
+            server_manager.delete_current_server()
+            server_manager.refresh_max()
+            wins['list'].refresh()
+        elif c == curses.KEY_UP:
+            server_manager.select_up(1)
+            wins['list'].refresh()
+        elif c == curses.KEY_DOWN:
+            server_manager.select_down(1)
+            wins['list'].refresh()
+        elif c == 338:  # PageDown
+            server_manager.select_down(20)
+            wins['list'].refresh()
+        elif c == 339:  # PageUp
+            server_manager.select_up(20)
+            wins['list'].refresh()
+        elif c == ord('\n'):
+            if server_manager.selected_server_idx >= 0:
+                curses.endwin()
+                server_manager.connect(user_state.get_user())
+        elif c == curses.KEY_RESIZE:
+            _rebuild()
+        else:
+            logger.info(c)
+            wins['keyword'].process(c)
+            server_manager.filter()
+            wins['list'].refresh()
 
     while True:
         try:
-            if keyword_win is None:
+            if wins['keyword'] is None:
                 stdscr.timeout(300)
                 c = stdscr.getch()
                 if c == curses.KEY_RESIZE:
-                    help_win, user_win, server_list_win, keyword_win = rebuild_all_windows(
-                        stdscr, context, user_state, server_manager)
+                    _rebuild()
                 continue
 
-            c = keyword_win.getch()
-            if c == ord(':'):
-                cmd_str, resized = run_popup(lambda: CommandPromptWindow(context).process())
-                if resized:
-                    help_win, user_win, server_list_win, keyword_win = rebuild_all_windows(
-                        stdscr, context, user_state, server_manager)
-                    if keyword_win is None:
-                        continue
-                    server_list_win.refresh()
-                    keyword_win.refresh()
-                    continue
-
-                if cmd_str is not None:
-                    result, message = execute_command(cmd_str, context)
-                    if result == 'quit':
-                        curses.endwin()
-                        server_manager.save_to_json()
-                        print('Goodbye :)')
-                        sys.exit()
-                    elif result == 'error':
-                        show_status_message(context, 'error: ' + message)
-                    elif result == 'ok':
-                        help_win.refresh()
-
-                server_list_win.refresh()
-                keyword_win.refresh()
-                continue
-            elif c == ord('/'):
-                user_win.change_user()
-            elif c == ord(','):
-                user_win.change_login_method()
-            elif c == ord('\\'):
-                user_win.change_login_method()
-            elif c == curses.KEY_UP:
-                server_manager.select_up(1)
-                server_list_win.refresh()
-            elif c == curses.KEY_DOWN:
-                server_manager.select_down(1)
-                server_list_win.refresh()
-            elif c == ord('\n'):
-                if server_manager.selected_server_idx >= 0:
-                    curses.endwin()
-                    server_manager.connect(user_state.get_user())
-            elif c == 338:
-                server_manager.select_down(20)
-                server_list_win.refresh()
-            elif c == 339:
-                server_manager.select_up(20)
-                server_list_win.refresh()
-            elif c == 4:
-                server_manager.delete_current_server()
-                server_manager.refresh_max()
-                server_list_win.refresh()
-            elif c == 5:
-                current_server = server_manager.get_current_server()
-                if current_server is not None:
-                    new_server, resized = run_popup(
-                        lambda: ServerPopupWindow(context, server_manager,
-                                                  current_server['host'],
-                                                  current_server['description'],
-                                                  current_server['tags']).process())
-                    if resized:
-                        help_win, user_win, server_list_win, keyword_win = rebuild_all_windows(
-                            stdscr, context, user_state, server_manager)
-                        if keyword_win is None:
-                            continue
-                    elif new_server is not None:
-                        current_server['host'] = new_server['host']
-                        current_server['description'] = new_server['description']
-                        current_server['tags'] = new_server['tags']
-                        server_manager.refresh_max()
-                server_list_win.refresh()
-            elif c == 14:
-                new_server, resized = run_popup(
-                    lambda: ServerPopupWindow(context, server_manager).process())
-                if resized:
-                    help_win, user_win, server_list_win, keyword_win = rebuild_all_windows(
-                        stdscr, context, user_state, server_manager)
-                    if keyword_win is None:
-                        continue
-                elif new_server is not None:
-                    server_manager.insert_server(new_server)
-                    server_manager.refresh_max()
-                server_list_win.refresh()
-            elif c == curses.KEY_RESIZE:
-                help_win, user_win, server_list_win, keyword_win = rebuild_all_windows(
-                    stdscr, context, user_state, server_manager)
-                if keyword_win is None:
-                    continue
-            else:
-                logger.info(c)
-                keyword_win.process(c)
-                server_manager.filter()
-                server_list_win.refresh()
-
-            keyword_win.refresh()
+            c = wins['keyword'].getch()
+            _handle_key(c)
+            if wins['keyword'] is not None:
+                wins['keyword'].refresh()
         except KeyboardInterrupt:
             curses.endwin()
             server_manager.save_to_json()
