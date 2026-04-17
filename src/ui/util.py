@@ -51,16 +51,13 @@ def handle_line_edit_key(key, value, cursor_pos):
 
 
 def calc_popup_dims(context, desired_width=100, desired_height=12):
-    max_popup_w = context.cols - 4
-    max_popup_h = context.rows - context.top_help_rows - context.top_win_rows - 2
-
-    width = min(desired_width, max_popup_w)
+    width = min(desired_width, context.cols - 4)
     width = max(width, 40)
 
-    height = min(desired_height, max_popup_h)
+    height = min(desired_height, context.rows - 4)
     height = max(height, 3)
 
     x = max(0, (context.cols - width) // 2)
-    y = context.top_help_rows + context.top_win_rows + min(4, max(0, max_popup_h - height))
+    y = max(0, (context.rows - height) // 2)
 
     return height, width, y, x
