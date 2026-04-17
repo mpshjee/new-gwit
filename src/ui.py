@@ -74,7 +74,7 @@ class HelpWindow:
         safe_addstr(self.window, 2, 2, '[ctrl-n]: register new server     [ctrl-d]: delete server')
         safe_addstr(self.window, 3, 2, '[ctrl-e]: modify server           [ctrl-c]: quit or close popup window')
         safe_addstr(self.window, 4, 2, '[ctrl-r]: reset popup input')
-        safe_addstr(self.window, 5, 2, '[:]: command mode (e.g., :groups, :all, :fav <name>, :quit)')
+        safe_addstr(self.window, 5, 2, '[:]: command mode (e.g., :groups, :all, :group <name>, :quit)')
         safe_addstr(self.window, 6, 2, '- registered server will be saved when terminated. (server_list.json)')
         safe_addstr(self.window, 7, 2, '- make "~/.kinit_passwd" to execute kinit automatically.')
         safe_addstr(self.window, 8, 2, '- enter a keyword to filter the list.')

@@ -4,5 +4,6 @@
 server_list.json
 gwkit.log
 __pycache__/
+*.pyc
 CLAUDE.md
 plan/

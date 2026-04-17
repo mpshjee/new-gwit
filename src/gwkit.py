@@ -15,7 +15,7 @@ logger.addHandler(logging.FileHandler('gwkit.log'))
 logger.setLevel(logging.DEBUG)
 
 
-def execute_command(cmd_str, context, favorite_manager=None):
+def execute_command(cmd_str, context, server_group_manager=None):
     parts = cmd_str.split()
     if not parts:
         return 'ok', None
@@ -30,11 +30,11 @@ def execute_command(cmd_str, context, favorite_manager=None):
         context.view_mode = 'all'
         context.active_group_name = ''
         return 'ok', None
-    elif cmd == 'fav':
+    elif cmd == 'group':
         if not args:
-            return 'error', 'usage: :fav <group_name>'
+            return 'error', 'usage: :group <group_name>'
         name = args[0]
-        if favorite_manager is not None and name not in favorite_manager.groups:
+        if server_group_manager is not None and name not in server_group_manager.groups:
             return 'error', 'group not found: ' + name
         context.view_mode = 'group_detail'
         context.active_group_name = name

@@ -19,7 +19,7 @@ script_path = os.path.dirname(os.path.realpath(__file__))
 project_root = os.path.dirname(script_path)
 kinit_password = os.path.expanduser('~/.kinit_passwd')
 server_list_json_file = '{0}/server_list.json'.format(project_root)
-favorites_json_file = '{0}/favorites.json'.format(project_root)
+server_groups_json_file = '{0}/server_groups.json'.format(project_root)
 
 
 class ResizeRequested(Exception):
@@ -70,18 +70,18 @@ class UserState:
         return self.login_methods[self.context.login_method_idx]
 
 
-class FavoriteManager:
+class ServerGroupManager:
     def __init__(self):
         self.groups = {}  # {group_name: [host, ...]}
         self.load()
 
     def load(self):
-        if os.path.exists(favorites_json_file):
-            with open(favorites_json_file, 'r') as f:
+        if os.path.exists(server_groups_json_file):
+            with open(server_groups_json_file, 'r') as f:
                 self.groups = json.load(f)
 
     def save(self):
-        with open(favorites_json_file, 'w') as f:
+        with open(server_groups_json_file, 'w') as f:
             json.dump(self.groups, f)
 
     def get_group_names(self):
