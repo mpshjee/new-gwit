@@ -33,6 +33,30 @@ def show_status_message(context, msg, color_pair=4):
         pass
 
 
+def handle_line_edit_key(key, value, cursor_pos):
+    if key == curses.KEY_LEFT:
+        if cursor_pos > 0:
+            return value, cursor_pos - 1, True
+    elif key == curses.KEY_RIGHT:
+        if cursor_pos < len(value):
+            return value, cursor_pos + 1, True
+    elif key == curses.KEY_HOME or key == 1:  # Ctrl-A
+        return value, 0, True
+    elif key == curses.KEY_END or key == 5:  # Ctrl-E
+        return value, len(value), True
+    elif key == 8 or key == 127 or key == curses.KEY_BACKSPACE:
+        if cursor_pos > 0:
+            return value[:cursor_pos - 1] + value[cursor_pos:], cursor_pos - 1, True
+    elif key == curses.KEY_DC:
+        if cursor_pos < len(value):
+            return value[:cursor_pos] + value[cursor_pos + 1:], cursor_pos, True
+    elif key == 18:  # Ctrl-R
+        return '', 0, True
+    elif 32 <= key <= 126:
+        return value[:cursor_pos] + chr(key) + value[cursor_pos:], cursor_pos + 1, True
+    return value, cursor_pos, False
+
+
 def calc_popup_dims(context, desired_width=100, desired_height=12):
     max_popup_w = context.cols - 4
     max_popup_h = context.rows - context.top_help_rows - context.top_win_rows - 2
@@ -163,36 +187,10 @@ class KeywordWindow:
         self.window.refresh()
 
     def process(self, key):
-        if key == curses.KEY_LEFT:
-            if self.cursor_pos > 0:
-                self.cursor_pos -= 1
-                self.refresh_display()
-        elif key == curses.KEY_RIGHT:
-            if self.cursor_pos < len(self.context.keyword):
-                self.cursor_pos += 1
-                self.refresh_display()
-        elif key == curses.KEY_HOME or key == 1:  # Ctrl-A
-            self.cursor_pos = 0
-            self.refresh_display()
-        elif key == curses.KEY_END or key == 5:  # Ctrl-E
-            self.cursor_pos = len(self.context.keyword)
-            self.refresh_display()
-        elif key == 8 or key == 127 or key == curses.KEY_BACKSPACE:
-            if self.cursor_pos > 0:
-                self.context.keyword = self.context.keyword[:self.cursor_pos-1] + self.context.keyword[self.cursor_pos:]
-                self.cursor_pos -= 1
-                self.refresh_display()
-        elif key == curses.KEY_DC:
-            if self.cursor_pos < len(self.context.keyword):
-                self.context.keyword = self.context.keyword[:self.cursor_pos] + self.context.keyword[self.cursor_pos+1:]
-                self.refresh_display()
-        elif key == 18:  # Ctrl-R
-            self.context.keyword = ''
-            self.cursor_pos = 0
-            self.refresh_display()
-        elif key >= 32 and key <= 126:
-            self.context.keyword = self.context.keyword[:self.cursor_pos] + chr(key) + self.context.keyword[self.cursor_pos:]
-            self.cursor_pos += 1
+        new_value, new_pos, changed = handle_line_edit_key(key, self.context.keyword, self.cursor_pos)
+        if changed:
+            self.context.keyword = new_value
+            self.cursor_pos = new_pos
             self.refresh_display()
 
 
@@ -284,36 +282,10 @@ class InputLabel:
         self.is_active = False
 
     def process_key(self, key):
-        if key == curses.KEY_LEFT:
-            if self.cursor_pos > 0:
-                self.cursor_pos -= 1
-                self.refresh_display()
-        elif key == curses.KEY_RIGHT:
-            if self.cursor_pos < len(self.value):
-                self.cursor_pos += 1
-                self.refresh_display()
-        elif key == curses.KEY_HOME or key == 1:  # Ctrl-A
-            self.cursor_pos = 0
-            self.refresh_display()
-        elif key == curses.KEY_END or key == 5:  # Ctrl-E
-            self.cursor_pos = len(self.value)
-            self.refresh_display()
-        elif key == 8 or key == 127 or key == curses.KEY_BACKSPACE:
-            if self.cursor_pos > 0:
-                self.value = self.value[:self.cursor_pos-1] + self.value[self.cursor_pos:]
-                self.cursor_pos -= 1
-                self.refresh_display()
-        elif key == curses.KEY_DC:
-            if self.cursor_pos < len(self.value):
-                self.value = self.value[:self.cursor_pos] + self.value[self.cursor_pos+1:]
-                self.refresh_display()
-        elif key == 18:  # Ctrl-R
-            self.value = ''
-            self.cursor_pos = 0
-            self.refresh_display()
-        elif key >= 32 and key <= 126:
-            self.value = self.value[:self.cursor_pos] + chr(key) + self.value[self.cursor_pos:]
-            self.cursor_pos += 1
+        new_value, new_pos, changed = handle_line_edit_key(key, self.value, self.cursor_pos)
+        if changed:
+            self.value = new_value
+            self.cursor_pos = new_pos
             self.refresh_display()
 
     def set_active(self, active):
