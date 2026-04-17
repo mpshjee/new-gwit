@@ -1,11 +1,6 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 
-import logging
-
-
-logger = logging.getLogger('gwkit')
-
 
 class Context:
     MIN_ROWS = 17

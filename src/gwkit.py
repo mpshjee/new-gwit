@@ -7,7 +7,7 @@ import os
 import sys
 
 from config import ResizeRequested, kinit_password
-from core import Context, UserState
+from state import Context, UserState
 from data import ServerManager, ServerGroupManager
 from fetch import init_server_list
 from ui import (HelpPanel, GroupContextPanel, UserPanel, KeywordPanel, ServerListPanel,
