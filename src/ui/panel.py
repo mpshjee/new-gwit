@@ -142,6 +142,8 @@ class KeywordPanel:
 
 
 class ServerListPanel:
+    _PADDING = 4
+
     def __init__(self, ui, app, server_manager, y, height):
         self.ui = ui
         self.app = app
@@ -149,6 +151,64 @@ class ServerListPanel:
         self.height = height
         self.window = curses.newwin(height, ui.cols, y, 0)
         self.window.scrollok(True)
+        self.selected_server_idx = -1
+        self.top = 0
+        self.bottom = 0
+        self.max_host = 30
+        self.max_tags = 30
+        self.filter()
+
+    def filter(self):
+        self.server_manager.filter()
+        self.selected_server_idx = -1
+        self.top = 0
+        self.bottom = max(0, self.height - self._PADDING)
+        self.refresh_max()
+
+    def refresh_max(self):
+        servers = self.server_manager.servers
+        if servers:
+            self.max_host = max(len(s['host']) for s in servers)
+            self.max_tags = max(len(', '.join(s['tags'])) for s in servers)
+        else:
+            self.max_host = 30
+            self.max_tags = 30
+
+    def select_up(self, delta):
+        self.selected_server_idx -= delta
+        if self.selected_server_idx < 0:
+            self.selected_server_idx = 0
+
+        if self.selected_server_idx < self.top:
+            scroll = self.top - self.selected_server_idx
+            self.top -= scroll
+            self.bottom -= scroll
+
+    def select_down(self, delta):
+        filtered = self.server_manager.filtered_servers
+        self.selected_server_idx += delta
+        if self.selected_server_idx > len(filtered) - 1:
+            self.selected_server_idx = len(filtered) - 1
+
+        if self.selected_server_idx > self.bottom:
+            scroll = self.selected_server_idx - self.bottom
+            self.top += scroll
+            self.bottom += scroll
+
+    def get_current_server(self):
+        if self.selected_server_idx < 0:
+            return None
+        filtered = self.server_manager.filtered_servers
+        if self.selected_server_idx >= len(filtered):
+            return None
+        return filtered[self.selected_server_idx]
+
+    def delete_current_server(self):
+        current = self.get_current_server()
+        if current is None:
+            return
+        self.server_manager.delete_server(current['host'])
+        self.filter()
 
     def _print_color_text(self, text, index, y, x, width):
         max_y, max_x = self.window.getmaxyx()
@@ -170,7 +230,7 @@ class ServerListPanel:
         words = text.split(' ')
         for word in words:
             color_index = 0
-            if index == self.server_manager.selected_server_idx:
+            if index == self.selected_server_idx:
                 color_index += 1
 
             if word.upper() in keywords:
@@ -183,11 +243,10 @@ class ServerListPanel:
             safe_addstr(self.window, y, x + text_length, ''.ljust(width - text_length), curses.color_pair(color_index))
 
     def refresh(self):
-        sm = self.server_manager
         DEFAULT_PAD_LEN = 5
         HOST_X = DEFAULT_PAD_LEN
-        TAGS_X = sm.max_host + DEFAULT_PAD_LEN * 2
-        DESC_X = sm.max_host + sm.max_tags + DEFAULT_PAD_LEN * 3
+        TAGS_X = self.max_host + DEFAULT_PAD_LEN * 2
+        DESC_X = self.max_host + self.max_tags + DEFAULT_PAD_LEN * 3
 
         self.window.clear()
         self.window.border(0)
@@ -196,18 +255,18 @@ class ServerListPanel:
         safe_addstr(self.window, 0, DESC_X, 'Description')
 
         max_y = self.window.getmaxyx()[0]
-        for (index, server) in enumerate(sm.filtered_servers):
-            if index < sm.top:
+        for (index, server) in enumerate(self.server_manager.filtered_servers):
+            if index < self.top:
                 continue
 
-            if index > sm.bottom:
+            if index > self.bottom:
                 break
 
-            row_y = index - sm.top + 2
+            row_y = index - self.top + 2
             if row_y >= max_y - 1:
                 break
 
-            self._print_color_text(server['host'], index, row_y, HOST_X, sm.max_host + DEFAULT_PAD_LEN)
-            self._print_color_text(', '.join(server['tags']), index, row_y, TAGS_X, sm.max_tags + DEFAULT_PAD_LEN)
+            self._print_color_text(server['host'], index, row_y, HOST_X, self.max_host + DEFAULT_PAD_LEN)
+            self._print_color_text(', '.join(server['tags']), index, row_y, TAGS_X, self.max_tags + DEFAULT_PAD_LEN)
             self._print_color_text(server['description'], index, row_y, DESC_X, -1)
         self.window.refresh()

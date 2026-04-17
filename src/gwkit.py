@@ -78,8 +78,6 @@ def rebuild_all_windows(stdscr, ui, app, user_state, server_manager, server_grou
     group_ctx_win = GroupContextPanel(ui, app, *group_ctx_slot)
     user_win = UserPanel(ui, user_state, *user_slot)
     keyword_win = KeywordPanel(ui, app, *user_slot)
-    server_manager.list_height = list_slot[1]
-    server_manager.filter()
     server_list_win = ServerListPanel(ui, app, server_manager, *list_slot)
     server_list_win.refresh()
     keyword_win.refresh()
@@ -111,14 +109,14 @@ def _handle_command_mode(wins, stdscr, ui, app, user_state, server_manager, serv
             _handle_group_select(wins, stdscr, ui, app, user_state, server_manager, server_group_manager)
             return
         elif result == 'ok':
-            server_manager.filter()
+            wins['list'].filter()
             wins['list'].refresh()
             wins['group_ctx'].refresh()
         wins['help'].refresh()
 
 
 def _handle_modify_server(wins, stdscr, ui, app, user_state, server_manager, server_group_manager):
-    current_server = server_manager.get_current_server()
+    current_server = wins['list'].get_current_server()
     if current_server is not None:
         new_server, resized = run_popup(
             lambda: ServerPopup(ui, server_manager,
@@ -132,7 +130,7 @@ def _handle_modify_server(wins, stdscr, ui, app, user_state, server_manager, ser
             current_server['host'] = new_server['host']
             current_server['description'] = new_server['description']
             current_server['tags'] = new_server['tags']
-            server_manager.refresh_max()
+            wins['list'].refresh_max()
     wins['list'].refresh()
 
 
@@ -144,7 +142,8 @@ def _handle_register_server(wins, stdscr, ui, app, user_state, server_manager, s
             return
     elif new_server is not None:
         server_manager.insert_server(new_server)
-        server_manager.refresh_max()
+        wins['list'].filter()
+        wins['list'].refresh_max()
     wins['list'].refresh()
 
 
@@ -157,7 +156,7 @@ def _handle_add_to_group(wins, stdscr, ui, app, user_state, server_manager, serv
     elif host is not None:
         server_group_manager.add_to_group(host, app.active_group_name)
         server_group_manager.save()
-        server_manager.filter()
+        wins['list'].filter()
     wins['list'].refresh()
 
 
@@ -172,7 +171,7 @@ def _handle_group_select(wins, stdscr, ui, app, user_state, server_manager, serv
         # 팝업 안에서 현재 컨텍스트 그룹이 삭제되었을 경우 폴백
         if app.active_group_name and app.active_group_name not in server_group_manager.groups:
             app.active_group_name = ''
-        server_manager.filter()
+        wins['list'].filter()
         wins['list'].refresh()
         wins['group_ctx'].refresh()
         wins['help'].refresh()
@@ -198,7 +197,6 @@ def main(stdscr):
     user_state = UserState(app)
     server_group_manager = ServerGroupManager()
     server_manager = ServerManager(app, server_group_manager)
-    server_manager.filter()
 
     wins = {'help': None, 'group_ctx': None, 'user': None, 'list': None, 'keyword': None}
     _do_rebuild(wins, stdscr, ui, app, user_state, server_manager, server_group_manager)
@@ -235,37 +233,38 @@ def main(stdscr):
             return
         elif c == 4:  # Ctrl+D
             if app.active_group_name:
-                current = server_manager.get_current_server()
+                current = wins['list'].get_current_server()
                 if current:
                     server_group_manager.remove_from_group(current['host'], app.active_group_name)
                     server_group_manager.save()
-                    server_manager.filter()
+                    wins['list'].filter()
             else:
-                server_manager.delete_current_server()
-                server_manager.refresh_max()
+                wins['list'].delete_current_server()
+                wins['list'].refresh_max()
             wins['list'].refresh()
         elif c == curses.KEY_UP:
-            server_manager.select_up(1)
+            wins['list'].select_up(1)
             wins['list'].refresh()
         elif c == curses.KEY_DOWN:
-            server_manager.select_down(1)
+            wins['list'].select_down(1)
             wins['list'].refresh()
         elif c == 338:  # PageDown
-            server_manager.select_down(20)
+            wins['list'].select_down(20)
             wins['list'].refresh()
         elif c == 339:  # PageUp
-            server_manager.select_up(20)
+            wins['list'].select_up(20)
             wins['list'].refresh()
         elif c == ord('\n'):
-            if server_manager.selected_server_idx >= 0:
+            current = wins['list'].get_current_server()
+            if current is not None:
                 curses.endwin()
-                server_manager.connect(user_state.get_user())
+                server_manager.connect(current['host'], user_state.get_user())
         elif c == curses.KEY_RESIZE:
             _rebuild()
         else:
             logger.info(c)
             wins['keyword'].process(c)
-            server_manager.filter()
+            wins['list'].filter()
             wins['list'].refresh()
 
     while True:

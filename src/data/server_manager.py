@@ -13,29 +13,12 @@ class ServerManager:
         self.server_group_manager = server_group_manager
         self.servers = []
         self.filtered_servers = []
-        self.selected_server_idx = -1
-        self.top = 0
-        self.bottom = 0
-        self.max_host = 30
-        self.max_tags = 30
-        self.padding = 4
-        self.list_height = 0
         self.load_servers()
 
     def load_servers(self):
         if os.path.exists(server_list_json_file):
             with open(server_list_json_file, 'r') as f:
                 self.servers = sorted(json.load(f), key=lambda s: s['host'])
-                self.refresh_max()
-
-    def refresh_max(self):
-        if len(self.servers) > 0:
-            self.max_host = max(map(lambda s: len(s['host']), self.servers))
-            self.max_tags = max(map(lambda s: len(', '.join(s['tags'])), self.servers))
-        else:
-            self.servers = []
-            self.max_host = 30
-            self.max_tags = 30
 
     def _is_matched(self, server, keyword):
         upper_keyword = keyword.upper()
@@ -52,10 +35,8 @@ class ServerManager:
 
         return False
 
-    def filter(self, selected_server_idx=None):
+    def filter(self):
         self.filtered_servers = self.servers
-        self.top = 0
-        self.bottom = self.list_height - self.padding if self.list_height > 0 else 0
 
         if self.app.keyword != '':
             keywords = self.app.keyword.split(' ')
@@ -66,36 +47,7 @@ class ServerManager:
             group_hosts = set(self.server_group_manager.get_hosts_in_group(self.app.active_group_name))
             self.filtered_servers = [s for s in self.filtered_servers if s['host'] in group_hosts]
 
-        if selected_server_idx is None or selected_server_idx > len(self.filtered_servers) - 1:
-            self.selected_server_idx = -1
-        else:
-            self.selected_server_idx = selected_server_idx
-
-    def select_up(self, delta):
-        self.selected_server_idx -= delta
-        if self.selected_server_idx < 0:
-            self.selected_server_idx = 0
-
-        if self.selected_server_idx < self.top:
-            scroll = self.top - self.selected_server_idx
-            self.top -= scroll
-            self.bottom -= scroll
-
-    def select_down(self, delta):
-        self.selected_server_idx += delta
-        if self.selected_server_idx > len(self.filtered_servers) - 1:
-            self.selected_server_idx = len(self.filtered_servers) - 1
-
-        if self.selected_server_idx > self.bottom:
-            scroll = self.selected_server_idx - self.bottom
-            self.top += scroll
-            self.bottom += scroll
-
-    def connect(self, user):
-        if self.selected_server_idx < 0:
-            return
-
-        host = self.filtered_servers[self.selected_server_idx]['host']
+    def connect(self, host, user):
         if self.app.login_method_idx == 0:
             ret = os.system('rlogin -l {0} {1}'.format(user, host))
             if ret != 0:
@@ -111,23 +63,10 @@ class ServerManager:
         for s in self.servers:
             if s['host'] == new_server['host']:
                 return
-
         self.servers.insert(0, new_server)
-        self.filter()
 
-    def delete_current_server(self):
-        if self.selected_server_idx < 0:
-            return
-
-        deleted = self.filtered_servers.pop(self.selected_server_idx)
-        self.servers = list(filter(lambda s: s['host'] != deleted['host'], self.servers))
-        self.filter(self.selected_server_idx)
-
-    def get_current_server(self):
-        if self.selected_server_idx < 0:
-            return None
-        else:
-            return self.filtered_servers[self.selected_server_idx]
+    def delete_server(self, host):
+        self.servers = [s for s in self.servers if s['host'] != host]
 
     def is_duplicated_host(self, host, original_host=None):
         if original_host is not None and original_host == host:
