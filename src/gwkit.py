@@ -8,11 +8,41 @@ import sys
 
 from core import Context, UserState, ServerManager, ResizeRequested, kinit_password, init_server_list
 from ui import (HelpWindow, UserWindow, KeywordWindow, ServerListWindow,
-                ServerPopupWindow)
+                ServerPopupWindow, CommandPromptWindow, show_status_message)
 
 logger = logging.getLogger('gwkit')
 logger.addHandler(logging.FileHandler('gwkit.log'))
 logger.setLevel(logging.DEBUG)
+
+
+def execute_command(cmd_str, context, favorite_manager=None):
+    parts = cmd_str.split()
+    if not parts:
+        return 'ok', None
+
+    cmd = parts[0].lower()
+    args = parts[1:]
+
+    if cmd == 'groups':
+        context.view_mode = 'group_list'
+        return 'ok', None
+    elif cmd == 'all':
+        context.view_mode = 'all'
+        context.active_group_name = ''
+        return 'ok', None
+    elif cmd == 'fav':
+        if not args:
+            return 'error', 'usage: :fav <group_name>'
+        name = args[0]
+        if favorite_manager is not None and name not in favorite_manager.groups:
+            return 'error', 'group not found: ' + name
+        context.view_mode = 'group_detail'
+        context.active_group_name = name
+        return 'ok', None
+    elif cmd in ('quit', 'q'):
+        return 'quit', None
+    else:
+        return 'error', 'unknown command: ' + cmd
 
 
 def rebuild_all_windows(stdscr, context, user_state, server_manager):
@@ -72,7 +102,35 @@ def main(stdscr):
                 continue
 
             c = keyword_win.getch()
-            if c == ord('/'):
+            if c == ord(':'):
+                try:
+                    prompt = CommandPromptWindow(context)
+                    cmd_str = prompt.process()
+                except ResizeRequested:
+                    help_win, user_win, server_list_win, keyword_win = rebuild_all_windows(
+                        stdscr, context, user_state, server_manager)
+                    if keyword_win is None:
+                        continue
+                    server_list_win.refresh()
+                    keyword_win.refresh()
+                    continue
+
+                if cmd_str is not None:
+                    result, message = execute_command(cmd_str, context)
+                    if result == 'quit':
+                        curses.endwin()
+                        server_manager.save_to_json()
+                        print('Goodbye :)')
+                        sys.exit()
+                    elif result == 'error':
+                        show_status_message(context, 'error: ' + message)
+                    elif result == 'ok':
+                        help_win.refresh()
+
+                server_list_win.refresh()
+                keyword_win.refresh()
+                continue
+            elif c == ord('/'):
                 user_win.change_user()
             elif c == ord(','):
                 user_win.change_login_method()

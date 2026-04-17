@@ -24,6 +24,15 @@ def safe_addstr(window, y, x, text, attr=0):
         pass
 
 
+def show_status_message(context, msg, color_pair=4):
+    try:
+        win = curses.newwin(1, context.cols, context.rows - 1, 0)
+        safe_addstr(win, 0, 0, msg, curses.color_pair(color_pair))
+        win.refresh()
+    except curses.error:
+        pass
+
+
 def calc_popup_dims(context, desired_width=100, desired_height=12):
     max_popup_w = context.cols - 4
     max_popup_h = context.rows - context.top_help_rows - context.top_win_rows - 2
@@ -42,19 +51,39 @@ def calc_popup_dims(context, desired_width=100, desired_height=12):
 
 class HelpWindow:
     def __init__(self, context):
+        self.context = context
         self.window = curses.newwin(context.top_help_rows, context.cols, 0, 0)
-        self.window.border(0)
         self.window.scrollok(True)
+        self.refresh()
+
+    def refresh(self):
+        self.window.clear()
+        self.window.border(0)
         safe_addstr(self.window, 0, 5, 'Help')
+        mode = self.context.view_mode
+        if mode == 'group_list':
+            self._render_group_list()
+        elif mode == 'group_detail':
+            self._render_group_detail()
+        else:
+            self._render_all()
+        self.window.refresh()
+
+    def _render_all(self):
         safe_addstr(self.window, 1, 2, '[/]: change user to rlogin, [,]: change rlogin/ssh')
         safe_addstr(self.window, 2, 2, '[ctrl-n]: register new server     [ctrl-d]: delete server')
         safe_addstr(self.window, 3, 2, '[ctrl-e]: modify server           [ctrl-c]: quit or close popup window')
         safe_addstr(self.window, 4, 2, '[ctrl-r]: reset popup input')
-        safe_addstr(self.window, 5, 2, '- registered server will be saved when terminated. (server_list.json)')
-        safe_addstr(self.window, 6, 2, '- make "~/.kinit_passwd" to execute kinit automatically.')
-        safe_addstr(self.window, 7, 2, '- enter a keyword to filter the list.')
-        safe_addstr(self.window, 8, 2, '- search for hosts, tags, and descriptions using case-insensitive keywords.')
-        self.window.refresh()
+        safe_addstr(self.window, 5, 2, '[:]: command mode (e.g., :groups, :all, :fav <name>, :quit)')
+        safe_addstr(self.window, 6, 2, '- registered server will be saved when terminated. (server_list.json)')
+        safe_addstr(self.window, 7, 2, '- make "~/.kinit_passwd" to execute kinit automatically.')
+        safe_addstr(self.window, 8, 2, '- enter a keyword to filter the list.')
+
+    def _render_group_list(self):
+        self._render_all()
+
+    def _render_group_detail(self):
+        self._render_all()
 
 
 class UserWindow:
@@ -477,5 +506,42 @@ class ServerPopupWindow:
                         self._move_cursor(0)
                 else:
                     self._process_key(c)
+            except KeyboardInterrupt:
+                return None
+
+
+class CommandPromptWindow:
+    def __init__(self, context):
+        self.context = context
+        self.input_value = ''
+        self.window = curses.newwin(1, context.cols, context.rows - 1, 0)
+        self.window.keypad(True)
+        curses.curs_set(0)
+        self._render()
+
+    def _render(self):
+        self.window.clear()
+        text = ':' + self.input_value + '_'
+        padded = text.ljust(max(1, self.context.cols - 1))
+        safe_addstr(self.window, 0, 0, padded, curses.color_pair(5))
+        self.window.refresh()
+
+    def process(self):
+        while True:
+            try:
+                c = self.window.getch()
+                if c == curses.KEY_RESIZE:
+                    raise ResizeRequested()
+                elif c == 27:
+                    return None
+                elif c == ord('\n'):
+                    return self.input_value.strip()
+                elif c in (8, 127, curses.KEY_BACKSPACE):
+                    if self.input_value:
+                        self.input_value = self.input_value[:-1]
+                        self._render()
+                elif 32 <= c <= 126:
+                    self.input_value += chr(c)
+                    self._render()
             except KeyboardInterrupt:
                 return None

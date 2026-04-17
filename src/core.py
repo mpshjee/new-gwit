@@ -39,6 +39,8 @@ class Context:
         self.top_help_rows = 10
         self.top_win_rows = 3
         self.login_method_idx = 1
+        self.view_mode = 'all'
+        self.active_group_name = ''
 
     def update_dimensions(self, rows, cols):
         self.rows = rows
