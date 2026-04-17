@@ -15,6 +15,13 @@ logger.addHandler(logging.FileHandler('gwkit.log'))
 logger.setLevel(logging.DEBUG)
 
 
+def run_popup(popup_factory):
+    try:
+        return popup_factory(), False
+    except ResizeRequested:
+        return None, True
+
+
 def execute_command(cmd_str, context, server_group_manager=None):
     parts = cmd_str.split()
     if not parts:
@@ -103,10 +110,8 @@ def main(stdscr):
 
             c = keyword_win.getch()
             if c == ord(':'):
-                try:
-                    prompt = CommandPromptWindow(context)
-                    cmd_str = prompt.process()
-                except ResizeRequested:
+                cmd_str, resized = run_popup(lambda: CommandPromptWindow(context).process())
+                if resized:
                     help_win, user_win, server_list_win, keyword_win = rebuild_all_windows(
                         stdscr, context, user_state, server_manager)
                     if keyword_win is None:
@@ -159,36 +164,33 @@ def main(stdscr):
             elif c == 5:
                 current_server = server_manager.get_current_server()
                 if current_server is not None:
-                    try:
-                        popup_win = ServerPopupWindow(context,
-                                                      server_manager,
-                                                      current_server['host'],
-                                                      current_server['description'],
-                                                      current_server['tags'])
-                        new_server = popup_win.process()
-                        if new_server is not None:
-                            current_server['host'] = new_server['host']
-                            current_server['description'] = new_server['description']
-                            current_server['tags'] = new_server['tags']
-                            server_manager.refresh_max()
-                    except ResizeRequested:
+                    new_server, resized = run_popup(
+                        lambda: ServerPopupWindow(context, server_manager,
+                                                  current_server['host'],
+                                                  current_server['description'],
+                                                  current_server['tags']).process())
+                    if resized:
                         help_win, user_win, server_list_win, keyword_win = rebuild_all_windows(
                             stdscr, context, user_state, server_manager)
                         if keyword_win is None:
                             continue
+                    elif new_server is not None:
+                        current_server['host'] = new_server['host']
+                        current_server['description'] = new_server['description']
+                        current_server['tags'] = new_server['tags']
+                        server_manager.refresh_max()
                 server_list_win.refresh()
             elif c == 14:
-                try:
-                    popup_win = ServerPopupWindow(context, server_manager)
-                    new_server = popup_win.process()
-                    if new_server is not None:
-                        server_manager.insert_server(new_server)
-                        server_manager.refresh_max()
-                except ResizeRequested:
+                new_server, resized = run_popup(
+                    lambda: ServerPopupWindow(context, server_manager).process())
+                if resized:
                     help_win, user_win, server_list_win, keyword_win = rebuild_all_windows(
                         stdscr, context, user_state, server_manager)
                     if keyword_win is None:
                         continue
+                elif new_server is not None:
+                    server_manager.insert_server(new_server)
+                    server_manager.refresh_max()
                 server_list_win.refresh()
             elif c == curses.KEY_RESIZE:
                 help_win, user_win, server_list_win, keyword_win = rebuild_all_windows(
