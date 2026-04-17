@@ -87,11 +87,7 @@ def _handle_command_mode(wins, stdscr, context, user_state, server_manager):
     if resized:
         if not _do_rebuild(wins, stdscr, context, user_state, server_manager):
             return
-        wins['list'].refresh()
-        wins['keyword'].refresh()
-        return
-
-    if cmd_str is not None:
+    elif cmd_str is not None:
         result, message = execute_command(cmd_str, context)
         if result == 'quit':
             curses.endwin()
@@ -104,7 +100,6 @@ def _handle_command_mode(wins, stdscr, context, user_state, server_manager):
             wins['help'].refresh()
 
     wins['list'].refresh()
-    wins['keyword'].refresh()
 
 
 def _handle_modify_server(wins, stdscr, context, user_state, server_manager):
