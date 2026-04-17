@@ -347,26 +347,7 @@ class InputLabel:
     def print_label(self, y, x):
         self.y = y
         self.label_x = x
-
-        safe_addstr(self.window, y, x, self.prefix + " ", curses.color_pair(5))
-
-        max_x = self.window.getmaxyx()[1]
-        display_width = max(20, len(self.value) + 5)
-        display_text = self.value + " " * (display_width - len(self.value))
-
-        for i in range(display_width):
-            if self.min_x + i >= max_x - 1:
-                break
-
-            if i < len(display_text):
-                char = display_text[i]
-            else:
-                char = " "
-
-            if self.is_active and i == self.cursor_pos:
-                safe_addstr(self.window, y, self.min_x + i, char, curses.color_pair(6))
-            else:
-                safe_addstr(self.window, y, self.min_x + i, char, curses.color_pair(7))
+        self.refresh_display()
 
 
 class LoadTipsServerList:
