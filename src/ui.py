@@ -49,7 +49,7 @@ class HelpWindow:
         safe_addstr(self.window, 1, 2, '[/]: change user to rlogin, [,]: change rlogin/ssh')
         safe_addstr(self.window, 2, 2, '[ctrl-n]: register new server     [ctrl-d]: delete server')
         safe_addstr(self.window, 3, 2, '[ctrl-e]: modify server           [ctrl-c]: quit or close popup window')
-        safe_addstr(self.window, 4, 2, '[ctrl-l]: load old gw file        [ctrl-r]: reset popup input')
+        safe_addstr(self.window, 4, 2, '[ctrl-r]: reset popup input')
         safe_addstr(self.window, 5, 2, '- registered server will be saved when terminated. (server_list.json)')
         safe_addstr(self.window, 6, 2, '- make "~/.kinit_passwd" to execute kinit automatically.')
         safe_addstr(self.window, 7, 2, '- enter a keyword to filter the list.')
@@ -396,34 +396,6 @@ class LoadTipsServerList:
                         }
                 else:
                     self._process_key(c)
-            except KeyboardInterrupt:
-                return None
-
-
-class LoadOldGwFilePopupWindow:
-    def __init__(self, context):
-        h, w, y, x = calc_popup_dims(context, desired_width=100, desired_height=3)
-        self.window = curses.newwin(h, w, y, x)
-        self.window.border(0)
-        self.window.scrollok(True)
-        curses.curs_set(0)
-
-        safe_addstr(self.window, 0, 5, 'Load old gateway .known_hosts (.known_host can be omitted)')
-        self.window.bkgd(' ', curses.color_pair(5))
-        self.path_input_label = InputLabel(self.window, 2, 'Path :', os.path.expanduser('~'))
-        self.path_input_label.set_active(True)
-        self.path_input_label.print_label(1, 2)
-
-    def process(self):
-        while True:
-            try:
-                c = self.window.getch()
-                if c == curses.KEY_RESIZE:
-                    raise ResizeRequested()
-                elif c == ord('\n'):
-                    return self.path_input_label.value
-                else:
-                    self.path_input_label.process_key(c)
             except KeyboardInterrupt:
                 return None
 

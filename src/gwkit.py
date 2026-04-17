@@ -8,7 +8,7 @@ import sys
 
 from core import Context, UserState, ServerManager, ResizeRequested, kinit_password, init_server_list
 from ui import (HelpWindow, UserWindow, KeywordWindow, ServerListWindow,
-                ServerPopupWindow, LoadOldGwFilePopupWindow)
+                ServerPopupWindow)
 
 logger = logging.getLogger('gwkit')
 logger.addHandler(logging.FileHandler('gwkit.log'))
@@ -126,18 +126,6 @@ def main(stdscr):
                     if new_server is not None:
                         server_manager.insert_server(new_server)
                         server_manager.refresh_max()
-                except ResizeRequested:
-                    help_win, user_win, server_list_win, keyword_win = rebuild_all_windows(
-                        stdscr, context, user_state, server_manager)
-                    if keyword_win is None:
-                        continue
-                server_list_win.refresh()
-            elif c == 12:
-                try:
-                    popup_win = LoadOldGwFilePopupWindow(context)
-                    known_host_path = popup_win.process()
-                    if known_host_path is not None:
-                        server_manager.load_old_gw_file(known_host_path)
                 except ResizeRequested:
                     help_win, user_win, server_list_win, keyword_win = rebuild_all_windows(
                         stdscr, context, user_state, server_manager)

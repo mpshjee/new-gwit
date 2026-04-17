@@ -237,26 +237,6 @@ class ServerManager:
         else:
             return self.filtered_servers[self.selected_server_idx]
 
-    def load_old_gw_file(self, known_host_path):
-        if '.known_hosts' not in known_host_path:
-            known_host_path = known_host_path + '/.known_hosts'
-
-        if not os.path.exists(known_host_path):
-            return
-
-        with open(known_host_path, 'r') as f:
-            lines = f.readlines()
-            for line in lines:
-                chunks = line.strip().split()
-                host = chunks[0].strip()
-                description = ' '.join(chunks[1:])
-                host = host.strip()
-                self.insert_server({
-                    'host': host,
-                    'description': description,
-                    'tags': []
-                })
-
     def is_duplicated_host(self, host, original_host=None):
         if original_host is not None and original_host == host:
             return False
