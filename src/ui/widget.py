@@ -61,6 +61,35 @@ class InputLabel:
         self.refresh_display()
 
 
+class FormInput:
+    def __init__(self, window, padding_top, padding_left, fields):
+        self.window = window
+        self.padding_top = padding_top
+        self.labels = []
+        for i, (prefix, value) in enumerate(fields):
+            label = InputLabel(window, padding_left, prefix, value)
+            label.print_label(padding_top + i * 2, padding_left)
+            self.labels.append(label)
+        self.active_idx = 0
+        self.labels[0].set_active(True)
+
+    def move_cursor(self, delta):
+        self.labels[self.active_idx].set_active(False)
+        self.active_idx = (self.active_idx + delta) % len(self.labels)
+        self.labels[self.active_idx].set_active(True)
+        label = self.labels[self.active_idx]
+        self.window.move(self.padding_top + self.active_idx * 2, label.min_x + label.cursor_pos)
+
+    def process_key(self, key):
+        self.labels[self.active_idx].process_key(key)
+
+    def get_value(self, index):
+        return self.labels[index].value
+
+    def get_values(self):
+        return [label.value for label in self.labels]
+
+
 class ScrollableList:
     def __init__(self, window, start_y, x, width, max_visible, format_fn=None):
         self.window = window

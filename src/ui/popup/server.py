@@ -6,7 +6,7 @@ import logging
 import re
 
 from ui.util import safe_addstr, calc_popup_dims
-from ui.widget import InputLabel
+from ui.widget import FormInput
 from core import ResizeRequested
 
 logger = logging.getLogger('gwkit')
@@ -30,40 +30,11 @@ class ServerPopup:
             safe_addstr(self.window, 0, 5, 'Modify')
         self.window.bkgd(' ', curses.color_pair(5))
 
-        self.padding_top = 2
-        self.padding_left = 2
-
-        self.host_input_label = InputLabel(self.window, self.padding_left, 'Host :', host)
-        self.description_input_label = InputLabel(self.window, self.padding_left, 'Description :', description)
-        self.tags_input_label = InputLabel(self.window, self.padding_left, 'Tags :', '' if tags is None else ' '.join(tags))
-        self.input_labels = [self.host_input_label, self.description_input_label, self.tags_input_label]
-        self.input_label_idx = 0
-
-        self.host_input_label.print_label(self.padding_top, self.padding_left)
-        self.description_input_label.print_label(self.padding_top + 2, self.padding_left)
-        self.tags_input_label.print_label(self.padding_top + 4, self.padding_left)
-
-        self.input_labels[self.input_label_idx].set_active(True)
-        self._move_cursor(0)
-
-    def _move_cursor(self, delta):
-        self.input_labels[self.input_label_idx].set_active(False)
-
-        self.input_label_idx = (self.input_label_idx + delta) % len(self.input_labels)
-
-        self.input_labels[self.input_label_idx].set_active(True)
-
-        input_label = self.input_labels[self.input_label_idx]
-        self.window.move(self.padding_top + self.input_label_idx * 2, input_label.min_x + input_label.cursor_pos)
-
-    def _process_key(self, key):
-        self.input_labels[self.input_label_idx].process_key(key)
-
-    def _is_duplicated_host_exists(self):
-        return self.server_manager.is_duplicated_host(
-            self.host_input_label.value,
-            self.original_host
-        )
+        self.form = FormInput(self.window, padding_top=2, padding_left=2, fields=[
+            ('Host :', host),
+            ('Description :', description),
+            ('Tags :', '' if tags is None else ' '.join(tags)),
+        ])
 
     def process(self):
         while True:
@@ -72,23 +43,24 @@ class ServerPopup:
                 if c == curses.KEY_RESIZE:
                     raise ResizeRequested()
                 elif c == curses.KEY_UP:
-                    self._move_cursor(-1)
+                    self.form.move_cursor(-1)
                 elif c == curses.KEY_DOWN:
-                    self._move_cursor(+1)
+                    self.form.move_cursor(1)
                 elif c == ord('\n'):
-                    if not self._is_duplicated_host_exists():
+                    host_val = self.form.get_value(0)
+                    if not self.server_manager.is_duplicated_host(host_val, self.original_host):
                         return {
-                            'host': self.host_input_label.value,
-                            'description': self.description_input_label.value,
-                            'tags': list(filter(lambda s: s != '', re.split(',| ', self.tags_input_label.value)))
+                            'host': host_val,
+                            'description': self.form.get_value(1),
+                            'tags': list(filter(lambda s: s != '', re.split(',| ', self.form.get_value(2))))
                         }
                     else:
-                        safe_addstr(self.window, self.padding_top + 1, self.padding_left, 'Duplicated Host !!!', curses.color_pair(4))
+                        safe_addstr(self.window, 3, 2, 'Duplicated Host !!!', curses.color_pair(4))
                         self.window.getch()
-                        safe_addstr(self.window, self.padding_top + 1, self.padding_left, '                         ')
-                        self._move_cursor(0)
+                        safe_addstr(self.window, 3, 2, '                         ')
+                        self.form.move_cursor(0)
                 else:
-                    self._process_key(c)
+                    self.form.process_key(c)
             except KeyboardInterrupt:
                 return None
 
@@ -104,28 +76,10 @@ class LoadTipsServerList:
         safe_addstr(self.window, 0, 5, 'Input Your SSO INFO')
         self.window.bkgd(' ', curses.color_pair(5))
 
-        self.padding_top = 2
-        self.padding_left = 2
-
-        self.input_label_idx = 0
-
-        self.id_input_label = InputLabel(self.window, self.padding_left, 'Your NHN SSO ID: ', sso_id)
-        self.pw_input_label = InputLabel(self.window, self.padding_left, 'Your NHN SSO PW: ', sso_pw)
-
-        self.input_labels = [self.id_input_label, self.pw_input_label]
-
-        self.id_input_label.print_label(self.padding_top, self.padding_left)
-        self.pw_input_label.print_label(self.padding_top + 2, self.padding_left)
-
-        self._move_cursor(0)
-
-    def _move_cursor(self, delta):
-        self.input_label_idx = (self.input_label_idx + delta) % len(self.input_labels)
-        input_label = self.input_labels[self.input_label_idx]
-        self.window.move(self.padding_top + self.input_label_idx * 2, input_label.x)
-
-    def _process_key(self, key):
-        self.input_labels[self.input_label_idx].process_key(key)
+        self.form = FormInput(self.window, padding_top=2, padding_left=2, fields=[
+            ('Your NHN SSO ID: ', sso_id),
+            ('Your NHN SSO PW: ', sso_pw),
+        ])
 
     def process(self):
         while True:
@@ -134,21 +88,19 @@ class LoadTipsServerList:
                 if c == curses.KEY_RESIZE:
                     raise ResizeRequested()
                 elif c == curses.KEY_UP:
-                    self._move_cursor(-1)
+                    self.form.move_cursor(-1)
                 elif c == curses.KEY_DOWN:
-                    self._move_cursor(+1)
+                    self.form.move_cursor(1)
                 elif c == ord('\n'):
-                    if not self.id_input_label.value:
+                    values = self.form.get_values()
+                    if not values[0]:
                         logger.info('no value')
-                    elif not self.pw_input_label.value:
+                    elif not values[1]:
                         logger.info('no value')
                     else:
-                        return {
-                            'sso_id': self.id_input_label.value,
-                            'sso_pw': self.pw_input_label.value
-                        }
+                        return {'sso_id': values[0], 'sso_pw': values[1]}
                 else:
-                    self._process_key(c)
+                    self.form.process_key(c)
             except KeyboardInterrupt:
                 return None
 

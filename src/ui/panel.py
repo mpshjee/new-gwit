@@ -120,10 +120,24 @@ class KeywordPanel:
             self.refresh_display()
 
 
+class GroupContextPanel:
+    def __init__(self, context):
+        self.context = context
+
+    def render(self, window, y):
+        if self.context.active_group_name:
+            label = '[group: {}]'.format(self.context.active_group_name)
+        else:
+            label = '[all]'
+        x = max(2, self.context.cols - len(label) - 2)
+        safe_addstr(window, y, x, label, curses.color_pair(8))
+
+
 class ServerListPanel:
     def __init__(self, context, server_manager):
         self.context = context
         self.server_manager = server_manager
+        self.group_context = GroupContextPanel(context)
         self.window = curses.newwin(self.context.rows - self.context.top_help_rows - self.context.top_win_rows,
                                     self.context.cols,
                                     self.context.top_help_rows + self.context.top_win_rows,
@@ -171,9 +185,7 @@ class ServerListPanel:
 
         self.window.clear()
         self.window.border(0)
-        ctx_label = '[group: {}]'.format(self.context.active_group_name) if self.context.active_group_name else '[all]'
-        ctx_x = max(2, self.context.cols - len(ctx_label) - 2)
-        safe_addstr(self.window, 0, ctx_x, ctx_label, curses.color_pair(8))
+        self.group_context.render(self.window, 0)
         safe_addstr(self.window, 0, HOST_X, 'Host')
         safe_addstr(self.window, 0, TAGS_X, 'Tags')
         safe_addstr(self.window, 0, DESC_X, 'Description')
