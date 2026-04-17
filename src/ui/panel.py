@@ -9,9 +9,10 @@ from ui.widget import InputLabel  # noqa: F401 (re-export)
 
 
 class HelpPanel:
-    def __init__(self, context, y, height):
-        self.context = context
-        self.window = curses.newwin(height, context.cols, y, 0)
+    def __init__(self, ui, app, y, height):
+        self.ui = ui
+        self.app = app
+        self.window = curses.newwin(height, ui.cols, y, 0)
         self.window.scrollok(True)
         self.refresh()
 
@@ -19,7 +20,7 @@ class HelpPanel:
         self.window.clear()
         self.window.border(0)
         safe_addstr(self.window, 0, 5, 'Help')
-        if self.context.active_group_name:
+        if self.app.active_group_name:
             n_label = '[ctrl-n]: add to group'
             d_label = '[ctrl-d]: remove from group'
         else:
@@ -37,17 +38,18 @@ class HelpPanel:
 
 
 class GroupContextPanel:
-    def __init__(self, context, y, height):
-        self.context = context
-        self.window = curses.newwin(height, context.cols, y, 0)
+    def __init__(self, ui, app, y, height):
+        self.ui = ui
+        self.app = app
+        self.window = curses.newwin(height, ui.cols, y, 0)
         self.window.scrollok(True)
         self.refresh()
 
     def refresh(self):
         self.window.clear()
         self.window.border(0)
-        if self.context.active_group_name:
-            label = 'current server group : ' + self.context.active_group_name
+        if self.app.active_group_name:
+            label = 'current server group : ' + self.app.active_group_name
         else:
             label = 'current server group : all'
         safe_addstr(self.window, 1, 2, label, curses.color_pair(8))
@@ -55,10 +57,10 @@ class GroupContextPanel:
 
 
 class UserPanel:
-    def __init__(self, context, user_state, y, height):
-        self.context = context
+    def __init__(self, ui, user_state, y, height):
+        self.ui = ui
         self.user_state = user_state
-        self.window = curses.newwin(height, context.half_cols, y, 0)
+        self.window = curses.newwin(height, ui.half_cols, y, 0)
         self.window.scrollok(True)
         self.refresh_user_border()
 
@@ -79,13 +81,14 @@ class UserPanel:
 
 
 class KeywordPanel:
-    def __init__(self, context, y, height):
-        self.context = context
-        self.window = curses.newwin(height, context.half_cols, y, context.half_cols)
+    def __init__(self, ui, app, y, height):
+        self.ui = ui
+        self.app = app
+        self.window = curses.newwin(height, ui.half_cols, y, ui.half_cols)
         self.window.scrollok(True)
         self.window.keypad(True)
         self.window.border(0)
-        self.cursor_pos = len(self.context.keyword)
+        self.cursor_pos = len(self.app.keyword)
         self.refresh_display()
 
     def getch(self):
@@ -101,16 +104,16 @@ class KeywordPanel:
         prefix = "keyword : "
         safe_addstr(self.window, 1, 2, prefix, curses.color_pair(0))
 
-        available_width = max(0, self.context.half_cols - 4 - len(prefix))
-        display_width = max(available_width, len(self.context.keyword) + 5)
+        available_width = max(0, self.ui.half_cols - 4 - len(prefix))
+        display_width = max(available_width, len(self.app.keyword) + 5)
 
-        if len(self.context.keyword) == 0:
+        if len(self.app.keyword) == 0:
             display_text = " " * max(1, display_width)
         else:
-            display_text = self.context.keyword + " " * (display_width - len(self.context.keyword))
+            display_text = self.app.keyword + " " * (display_width - len(self.app.keyword))
 
         start_x = 2 + len(prefix)
-        max_x = self.context.half_cols - 2
+        max_x = self.ui.half_cols - 2
         for i in range(min(display_width, available_width)):
             if start_x + i >= max_x:
                 break
@@ -131,19 +134,20 @@ class KeywordPanel:
         self.window.refresh()
 
     def process(self, key):
-        new_value, new_pos, changed = handle_line_edit_key(key, self.context.keyword, self.cursor_pos)
+        new_value, new_pos, changed = handle_line_edit_key(key, self.app.keyword, self.cursor_pos)
         if changed:
-            self.context.keyword = new_value
+            self.app.keyword = new_value
             self.cursor_pos = new_pos
             self.refresh_display()
 
 
 class ServerListPanel:
-    def __init__(self, context, server_manager, y, height):
-        self.context = context
+    def __init__(self, ui, app, server_manager, y, height):
+        self.ui = ui
+        self.app = app
         self.server_manager = server_manager
         self.height = height
-        self.window = curses.newwin(height, context.cols, y, 0)
+        self.window = curses.newwin(height, ui.cols, y, 0)
         self.window.scrollok(True)
 
     def _print_color_text(self, text, index, y, x, width):
@@ -151,7 +155,7 @@ class ServerListPanel:
         if y < 0 or y >= max_y:
             return
 
-        keywords = list(map(lambda k: k.upper(), self.context.keyword.rstrip().split(' ')))
+        keywords = list(map(lambda k: k.upper(), self.app.keyword.rstrip().split(' ')))
         for k in keywords:
             pattern = re.compile("(" + k + ")", re.IGNORECASE)
             match = pattern.search(text, 0, len(text) - 1)

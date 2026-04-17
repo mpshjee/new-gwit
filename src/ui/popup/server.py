@@ -13,9 +13,9 @@ logger = logging.getLogger('gwkit')
 
 
 class ServerPopup:
-    def __init__(self, context, server_manager, host=None, description=None, tags=None):
-        h, w, y, x = calc_popup_dims(context, desired_width=100, desired_height=12)
-        self.context = context
+    def __init__(self, ui, server_manager, host=None, description=None, tags=None):
+        h, w, y, x = calc_popup_dims(ui, desired_width=100, desired_height=12)
+        self.ui = ui
         self.server_manager = server_manager
         self.original_host = host
         self.window = curses.newwin(h, w, y, x)
@@ -66,9 +66,9 @@ class ServerPopup:
 
 
 class LoadTipsServerList:
-    def __init__(self, context, sso_id=None, sso_pw=None):
-        h, w, y, x = calc_popup_dims(context, desired_width=100, desired_height=12)
-        self.context = context
+    def __init__(self, ui, sso_id=None, sso_pw=None):
+        h, w, y, x = calc_popup_dims(ui, desired_width=100, desired_height=12)
+        self.ui = ui
         self.window = curses.newwin(h, w, y, x)
         self.window.border(0)
         self.window.scrollok(True)
@@ -106,10 +106,10 @@ class LoadTipsServerList:
 
 
 class CommandPrompt:
-    def __init__(self, context):
-        self.context = context
+    def __init__(self, ui):
+        self.ui = ui
         self.input_value = ''
-        self.window = curses.newwin(1, context.cols, context.rows - 1, 0)
+        self.window = curses.newwin(1, ui.cols, ui.rows - 1, 0)
         self.window.keypad(True)
         curses.curs_set(0)
         self._render()
@@ -117,7 +117,7 @@ class CommandPrompt:
     def _render(self):
         self.window.clear()
         text = ':' + self.input_value + '_'
-        padded = text.ljust(max(1, self.context.cols - 1))
+        padded = text.ljust(max(1, self.ui.cols - 1))
         safe_addstr(self.window, 0, 0, padded, curses.color_pair(5))
         self.window.refresh()
 

@@ -17,9 +17,9 @@ def safe_addstr(window, y, x, text, attr=0):
         pass
 
 
-def show_status_message(context, msg, color_pair=4):
+def show_status_message(ui, msg, color_pair=4):
     try:
-        win = curses.newwin(1, context.cols, context.rows - 1, 0)
+        win = curses.newwin(1, ui.cols, ui.rows - 1, 0)
         safe_addstr(win, 0, 0, msg, curses.color_pair(color_pair))
         win.refresh()
     except curses.error:
@@ -50,14 +50,14 @@ def handle_line_edit_key(key, value, cursor_pos):
     return value, cursor_pos, False
 
 
-def calc_popup_dims(context, desired_width=100, desired_height=12):
-    width = min(desired_width, context.cols - 4)
+def calc_popup_dims(ui, desired_width=100, desired_height=12):
+    width = min(desired_width, ui.cols - 4)
     width = max(width, 40)
 
-    height = min(desired_height, context.rows - 4)
+    height = min(desired_height, ui.rows - 4)
     height = max(height, 3)
 
-    x = max(0, (context.cols - width) // 2)
-    y = max(0, (context.rows - height) // 2)
+    x = max(0, (ui.cols - width) // 2)
+    y = max(0, (ui.rows - height) // 2)
 
     return height, width, y, x

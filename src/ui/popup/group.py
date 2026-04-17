@@ -11,11 +11,11 @@ from config import ResizeRequested
 class GroupSelectPopup:
     ALL_LABEL = '[all servers]'
 
-    def __init__(self, context, server_group_manager):
-        self.context = context
+    def __init__(self, ui, server_group_manager):
+        self.ui = ui
         self.server_group_manager = server_group_manager
 
-        h, w, y, x = calc_popup_dims(context, desired_width=60, desired_height=20)
+        h, w, y, x = calc_popup_dims(ui, desired_width=60, desired_height=20)
         self.w = w
         self.window = curses.newwin(h, w, y, x)
         self.window.border(0)
@@ -101,11 +101,11 @@ class GroupSelectPopup:
 
 
 class AddServerToGroupPopup:
-    def __init__(self, context, non_member_servers):
+    def __init__(self, ui, non_member_servers):
         self.all_servers = non_member_servers
         self.keyword = ''
 
-        h, w, y, x = calc_popup_dims(context, desired_width=100, desired_height=20)
+        h, w, y, x = calc_popup_dims(ui, desired_width=100, desired_height=20)
         self.window = curses.newwin(h, w, y, x)
         self.window.border(0)
         self.window.scrollok(True)

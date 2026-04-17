@@ -8,8 +8,8 @@ from config import server_list_json_file
 
 
 class ServerManager:
-    def __init__(self, context, server_group_manager):
-        self.context = context
+    def __init__(self, app, server_group_manager):
+        self.app = app
         self.server_group_manager = server_group_manager
         self.servers = []
         self.filtered_servers = []
@@ -57,13 +57,13 @@ class ServerManager:
         self.top = 0
         self.bottom = self.list_height - self.padding if self.list_height > 0 else 0
 
-        if self.context.keyword != '':
-            keywords = self.context.keyword.split(' ')
+        if self.app.keyword != '':
+            keywords = self.app.keyword.split(' ')
             for k in keywords:
                 self.filtered_servers = list(filter(lambda s: self._is_matched(s, k), self.filtered_servers))
 
-        if self.context.active_group_name:
-            group_hosts = set(self.server_group_manager.get_hosts_in_group(self.context.active_group_name))
+        if self.app.active_group_name:
+            group_hosts = set(self.server_group_manager.get_hosts_in_group(self.app.active_group_name))
             self.filtered_servers = [s for s in self.filtered_servers if s['host'] in group_hosts]
 
         if selected_server_idx is None or selected_server_idx > len(self.filtered_servers) - 1:
@@ -96,7 +96,7 @@ class ServerManager:
             return
 
         host = self.filtered_servers[self.selected_server_idx]['host']
-        if self.context.login_method_idx == 0:
+        if self.app.login_method_idx == 0:
             ret = os.system('rlogin -l {0} {1}'.format(user, host))
             if ret != 0:
                 os.system('ssh {0}@{1}'.format(user, host))
