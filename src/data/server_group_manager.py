@@ -51,10 +51,22 @@ class ServerGroupManager:
         if host not in self.groups[group_name]:
             self.groups[group_name].append(host)
 
+    def add_hosts_to_group(self, hosts, group_name):
+        for h in hosts:
+            self.add_to_group(h, group_name)
+
     def remove_from_group(self, host, group_name):
         if group_name in self.groups and host in self.groups[group_name]:
             self.groups[group_name].remove(host)
 
+    def remove_hosts_from_group(self, hosts, group_name):
+        for h in hosts:
+            self.remove_from_group(h, group_name)
+
     def get_non_member_hosts(self, group_name, all_servers):
         members = set(self.get_hosts_in_group(group_name))
         return [s for s in all_servers if s['host'] not in members]
+
+    def get_member_servers(self, group_name, all_servers):
+        members = set(self.get_hosts_in_group(group_name))
+        return [s for s in all_servers if s['host'] in members]

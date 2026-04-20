@@ -91,7 +91,7 @@ class FormInput:
 
 
 class ScrollableList:
-    def __init__(self, window, start_y, x, width, max_visible, format_fn=None):
+    def __init__(self, window, start_y, x, width, max_visible, format_fn=None, multi_select=False):
         self.window = window
         self.items = []
         self.start_y = start_y
@@ -101,11 +101,14 @@ class ScrollableList:
         self.selected_idx = 0
         self.scroll_top = 0
         self.format_fn = format_fn or (lambda item: str(item))
+        self.multi_select = multi_select
+        self.checked_indices = set()
 
     def set_items(self, items):
         self.items = items
         if self.selected_idx >= len(items):
             self.selected_idx = max(0, len(items) - 1)
+        self.checked_indices = set()
 
     def select_up(self):
         if self.selected_idx > 0:
@@ -124,6 +127,18 @@ class ScrollableList:
             return self.items[self.selected_idx]
         return None
 
+    def toggle_current(self):
+        if not self.multi_select:
+            return
+        if 0 <= self.selected_idx < len(self.items):
+            if self.selected_idx in self.checked_indices:
+                self.checked_indices.remove(self.selected_idx)
+            else:
+                self.checked_indices.add(self.selected_idx)
+
+    def get_checked(self):
+        return [self.items[i] for i in sorted(self.checked_indices) if 0 <= i < len(self.items)]
+
     def render(self, selected_color=1, normal_color=5):
         for i in range(self.max_visible):
             y = self.start_y + i
@@ -132,6 +147,9 @@ class ScrollableList:
                 safe_addstr(self.window, y, self.x, ' ' * self.width, curses.color_pair(normal_color))
                 continue
             text = self.format_fn(self.items[idx])
+            if self.multi_select:
+                mark = '[*] ' if idx in self.checked_indices else '[ ] '
+                text = mark + text
             if len(text) > self.width:
                 text = text[:self.width - 3] + '...'
             text = text.ljust(self.width)

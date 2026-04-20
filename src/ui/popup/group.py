@@ -104,37 +104,55 @@ class GroupSelectPopup:
             self.window.refresh()
 
 
-class AddServerToGroupPopup:
-    def __init__(self, ui, non_member_servers):
-        self.all_servers = non_member_servers
+class _MultiSelectServerPopup:
+    TITLE = ''
+    HINT = '[space] toggle  [enter] confirm  [esc] cancel'
+
+    def __init__(self, ui, servers):
+        self.all_servers = list(servers)
         self.keyword = ''
+        self._checked_hosts = set()
 
         h, w, y, x = calc_popup_dims(ui, desired_width=100, desired_height=20)
+        self.w = w
         self.window = curses.newwin(h, w, y, x)
         self.window.border(0)
         self.window.scrollok(True)
         self.window.keypad(True)
         curses.curs_set(0)
         self.window.bkgd(' ', curses.color_pair(5))
-        safe_addstr(self.window, 0, 5, 'Add Server to Group')
+        safe_addstr(self.window, 0, 5, self.TITLE)
 
         max_visible = max(1, h - 5)
         self.list = ScrollableList(
-            self.window, start_y=3, x=2, width=94, max_visible=max_visible,
-            format_fn=lambda s: s['host'] + '  ' + s['description'])
-        self.list.set_items(list(non_member_servers))
+            self.window, start_y=3, x=2, width=w - 4, max_visible=max_visible,
+            format_fn=lambda s: s['host'] + '  ' + s['description'],
+            multi_select=True)
+        self.list.set_items(list(self.all_servers))
         self._render()
 
     def _filter(self):
+        self._sync_checked_from_list()
         if not self.keyword:
-            self.list.set_items(list(self.all_servers))
+            visible = list(self.all_servers)
         else:
             kw = self.keyword.upper()
-            self.list.set_items([s for s in self.all_servers
-                                 if kw in s['host'].upper() or kw in s['description'].upper()])
+            visible = [s for s in self.all_servers
+                       if kw in s['host'].upper() or kw in s['description'].upper()]
+        self.list.set_items(visible)
+        self.list.checked_indices = set(
+            i for i, s in enumerate(visible) if s['host'] in self._checked_hosts)
+
+    def _sync_checked_from_list(self):
+        for i, s in enumerate(self.list.items):
+            if i in self.list.checked_indices:
+                self._checked_hosts.add(s['host'])
+            else:
+                self._checked_hosts.discard(s['host'])
 
     def _render(self):
-        safe_addstr(self.window, 1, 2, ('Search: ' + self.keyword + '_').ljust(50), curses.color_pair(7))
+        safe_addstr(self.window, 0, self.w - len(self.HINT) - 4, self.HINT, curses.color_pair(5))
+        safe_addstr(self.window, 1, 2, ('Search: ' + self.keyword + '_').ljust(self.w - 4), curses.color_pair(7))
         self.list.render(selected_color=1, normal_color=7)
         self.window.refresh()
 
@@ -151,10 +169,14 @@ class AddServerToGroupPopup:
                     elif c == curses.KEY_DOWN:
                         self.list.select_down()
                         self._render()
+                    elif c == ord(' '):
+                        self.list.toggle_current()
+                        self._sync_checked_from_list()
+                        self._render()
                     elif c == ord('\n'):
-                        selected = self.list.get_selected()
-                        if selected is not None:
-                            return selected['host']
+                        self._sync_checked_from_list()
+                        return [s['host'] for s in self.all_servers
+                                if s['host'] in self._checked_hosts]
                     elif c in (8, 127, curses.KEY_BACKSPACE):
                         if self.keyword:
                             self.keyword = self.keyword[:-1]
@@ -162,7 +184,7 @@ class AddServerToGroupPopup:
                             self._render()
                     elif c in (27, 3):  # ESC or Ctrl+C
                         return None
-                    elif 32 <= c <= 126:
+                    elif 32 < c <= 126:
                         self.keyword += chr(c)
                         self._filter()
                         self._render()
@@ -171,3 +193,11 @@ class AddServerToGroupPopup:
         finally:
             self.window.erase()
             self.window.refresh()
+
+
+class AddServerToGroupPopup(_MultiSelectServerPopup):
+    TITLE = 'Add Servers to Group'
+
+
+class RemoveServersFromGroupPopup(_MultiSelectServerPopup):
+    TITLE = 'Remove Servers from Group'

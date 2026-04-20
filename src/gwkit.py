@@ -12,7 +12,7 @@ from data import ServerManager, ServerGroupManager
 from fetch import init_server_list
 from ui import (HelpPanel, GroupContextPanel, UserPanel, KeywordPanel, ServerListPanel,
                 ServerPopup, CommandPrompt, show_status_message,
-                GroupSelectPopup, AddServerToGroupPopup)
+                GroupSelectPopup, AddServerToGroupPopup, RemoveServersFromGroupPopup)
 from ui.layout import VerticalLayout, HELP_ROWS, GROUP_CTX_ROWS, TOP_WIN_ROWS
 
 logger = logging.getLogger('gwkit')
@@ -35,14 +35,12 @@ def execute_command(cmd_str, app, server_group_manager=None):
     cmd = parts[0].lower()
     args = parts[1:]
 
-    if cmd == 'groups':
-        return 'open_groups', None
-    elif cmd == 'all':
+    if cmd == 'all':
         app.active_group_name = ''
         return 'ok', None
     elif cmd == 'group':
         if not args:
-            return 'error', 'usage: :group <group_name>'
+            return 'open_groups', None
         name = args[0]
         if server_group_manager is not None and name not in server_group_manager.groups:
             return 'error', 'group not found: ' + name
@@ -156,12 +154,25 @@ def _handle_register_server(wins, stdscr, ui, app, user_state, server_manager, s
 
 def _handle_add_to_group(wins, stdscr, ui, app, user_state, server_manager, server_group_manager):
     non_members = server_group_manager.get_non_member_hosts(app.active_group_name, server_manager.servers)
-    host, resized = run_popup(lambda: AddServerToGroupPopup(ui, non_members).process())
+    hosts, resized = run_popup(lambda: AddServerToGroupPopup(ui, non_members).process())
     if resized:
         if not _do_rebuild(wins, stdscr, ui, app, user_state, server_manager, server_group_manager):
             return
-    elif host is not None:
-        server_group_manager.add_to_group(host, app.active_group_name)
+    elif hosts:
+        server_group_manager.add_hosts_to_group(hosts, app.active_group_name)
+        server_group_manager.save()
+        wins['list'].filter()
+    _refresh_all_wins(wins)
+
+
+def _handle_remove_from_group(wins, stdscr, ui, app, user_state, server_manager, server_group_manager):
+    members = server_group_manager.get_member_servers(app.active_group_name, server_manager.servers)
+    hosts, resized = run_popup(lambda: RemoveServersFromGroupPopup(ui, members).process())
+    if resized:
+        if not _do_rebuild(wins, stdscr, ui, app, user_state, server_manager, server_group_manager):
+            return
+    elif hosts:
+        server_group_manager.remove_hosts_from_group(hosts, app.active_group_name)
         server_group_manager.save()
         wins['list'].filter()
     _refresh_all_wins(wins)
@@ -224,9 +235,6 @@ def main(stdscr):
         if c == ord(':'):
             _handle_command_mode(wins, stdscr, ui, app, user_state, server_manager, server_group_manager)
             return
-        elif c == 7:  # Ctrl+G: 그룹 선택 팝업
-            _handle_group_select(wins, stdscr, ui, app, user_state, server_manager, server_group_manager)
-            return
         elif c == 5:  # Ctrl+E
             _handle_modify_server(wins, stdscr, ui, app, user_state, server_manager, server_group_manager)
             return
@@ -238,15 +246,12 @@ def main(stdscr):
             return
         elif c == 4:  # Ctrl+D
             if app.active_group_name:
-                current = wins['list'].get_current_server()
-                if current:
-                    server_group_manager.remove_from_group(current['host'], app.active_group_name)
-                    server_group_manager.save()
-                    wins['list'].filter()
+                _handle_remove_from_group(wins, stdscr, ui, app, user_state, server_manager, server_group_manager)
             else:
                 wins['list'].delete_current_server()
                 wins['list'].refresh_max()
-            wins['list'].refresh()
+                wins['list'].refresh()
+            return
         elif c == curses.KEY_UP:
             wins['list'].select_up(1)
             wins['list'].refresh()

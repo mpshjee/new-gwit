@@ -21,16 +21,16 @@ class HelpPanel:
         self.window.border(0)
         safe_addstr(self.window, 0, 5, 'Help')
         if self.app.active_group_name:
-            n_label = '[ctrl-n]: add to group'
-            d_label = '[ctrl-d]: remove from group'
+            n_label = '[ctrl-n]: add servers to group'
+            d_label = '[ctrl-d]: remove servers from group'
         else:
             n_label = '[ctrl-n]: register server'
             d_label = '[ctrl-d]: delete server'
-        safe_addstr(self.window, 1, 2, '[/]: change user,  [,]: change rlogin/ssh,  [ctrl-g]: select group')
+        safe_addstr(self.window, 1, 2, '[/]: change user,  [,]: change rlogin/ssh')
         safe_addstr(self.window, 2, 2, n_label + '     ' + d_label)
         safe_addstr(self.window, 3, 2, '[ctrl-e]: modify server           [ctrl-c]: quit or close popup window')
         safe_addstr(self.window, 4, 2, '[ctrl-r]: reset keyword')
-        safe_addstr(self.window, 5, 2, '[:]: command mode (e.g., :all, :group <name>, :quit)')
+        safe_addstr(self.window, 5, 2, '[:]: command mode (e.g., :all, :group, :group <name>, :quit)')
         safe_addstr(self.window, 6, 2, '- registered server will be saved when terminated. (server_list.json)')
         safe_addstr(self.window, 7, 2, '- make "~/.kinit_passwd" to execute kinit automatically.')
         safe_addstr(self.window, 8, 2, '- enter a keyword to filter the list.')
