@@ -107,7 +107,6 @@ class RemoteCommandOutputPopup(object):
         ssh_args = [
             'ssh',
             '-o', 'StrictHostKeyChecking=no',
-            '-o', 'BatchMode=yes',
             '{0}@{1}'.format(self.user, self.host),
             remote_cmd,
         ]
