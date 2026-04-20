@@ -8,7 +8,6 @@ import os
 import pipes
 import select
 import subprocess
-import sys
 import time
 
 from config import ResizeRequested
@@ -130,31 +129,30 @@ class RemoteCommandOutputPopup(object):
         fl = fcntl.fcntl(stdout_fd, fcntl.F_GETFL)
         fcntl.fcntl(stdout_fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
-        stdin_fd = sys.stdin.fileno()
-        self.window.nodelay(True)
+        # timeout(ms): getch가 n ms 대기 후 키 없으면 -1 반환
+        # stdin fd를 select로 감시하지 않아야 curses 버퍼와 충돌이 없음
+        self.window.timeout(50)
         self._render_output(cmd)
 
         RENDER_INTERVAL = 0.08
-        last_render = time.time()
+        last_render = 0.0
         pending = False
 
         try:
             while True:
-                try:
-                    readable, _, _ = select.select(
-                        [stdin_fd, stdout_fd], [], [], 0.2)
-                except select.error:
-                    continue
+                c = self.window.getch()
+                if c == curses.KEY_RESIZE:
+                    raise ResizeRequested()
+                if c in (27, ord('q')):
+                    break
 
-                if stdin_fd in readable:
-                    c = self.window.getch()
-                    if c == curses.KEY_RESIZE:
-                        raise ResizeRequested()
-                    if c in (27, ord('q')):
-                        break
-
+                # stdout non-blocking drain
                 eof = False
-                if stdout_fd in readable:
+                try:
+                    readable, _, _ = select.select([stdout_fd], [], [], 0)
+                except select.error:
+                    readable = []
+                if readable:
                     while True:
                         try:
                             data = os.read(stdout_fd, 4096)
@@ -180,11 +178,13 @@ class RemoteCommandOutputPopup(object):
                     rc = self.proc.wait()
                     self.buffer.append('[exited rc={0}]'.format(rc))
                     self._render_output(cmd, finished=True)
-                    self.window.nodelay(False)
+                    self.window.timeout(-1)
                     self._wait_any_key()
                     break
         except KeyboardInterrupt:
             pass
+        finally:
+            self.window.timeout(-1)
 
     def _cleanup(self):
         if self.proc and self.proc.poll() is None:
