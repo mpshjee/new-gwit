@@ -2,89 +2,110 @@
 
 ![blank](https://user-images.githubusercontent.com/58924412/147617149-62e9888f-14bc-4b34-bc95-bf288f3e60b3.png)
 
-## desription
+## 소개
 
 * 기존 gwkit의 검색이 마음에 들지 않아, 가볍게 python으로 TUI를 만들었습니다.
-* urwid라던가, 더 좋은 프레임워크가 있는 것 같은데 공부하는데 시간이 많이 소요될 것 같아 간단하게 curses로 만들었습니다.
-* 범용적인 실행을 위해 눈물이 나지만 python 2.7로 작성하였습니다.
+* 범용적인 실행을 위해 python 2.7로 작성하였습니다.
 
-## 기능
+## 키 바인딩
 
-* 서버 추가
-  * ctrl + n 누르면 서버를 추가할 수 있습니다.
-  * 정보 입력 후, enter 를 누르면 추가되며, 취소하고 싶으면 ctrl + c 를 누릅니다.
-  ![register](https://user-images.githubusercontent.com/58924412/147617148-9de1086a-ae07-4e90-ad84-fc954bd25d72.png)
-* 리스트 탐색
-  * 화살표 위 아래로 서버를 선택할 수 있습니다.
-  * 서버 선택 후, enter 를 누르면 rlogin 으로 접속합니다.
-  * 접속하는 사용자는 `/` 키를 눌러 변경할 수 있습니다.
-  ![list](https://user-images.githubusercontent.com/58924412/147617147-d9933a79-4679-4e5d-ac74-b76c5d7ffb2d.png)
-  * 원하는 단어로 필터링 할 수 있습니다. 스페이스바로 구분되어 and 조건으로 필터링 합니다.
-  * 필터링 단어는 대소문자 구분 없이 host, tag, description 에 포함 하는 것들을 필터링합니다.
-  * 필터링 된 단어는 빨간색으로 강조 됩니다.
-  ![filter](https://user-images.githubusercontent.com/58924412/147617145-b82836b1-4768-4072-b691-968e608edafe.png)
-* 서버 수정
-  * 서버 선택 후 ctrl + e 를 누르면 정보를 수정할 수 있습니다.
-  * 정보 수정 후, enter 를 누르면 추가되며, 취소하고 싶으면 ctrl + c 를 누릅니다.
-  ![modify](https://user-images.githubusercontent.com/58924412/147617142-b92e6a03-7366-4c04-96c3-b10a600126d6.png)
-* 기존 gwkit의 known_host 마이그레이션
-  * ctrl + l 을 누르고 known_host 파일 경로를 입력합니다.
-  ![migrate](https://user-images.githubusercontent.com/58924412/147617363-c3572d7e-a2b4-4fae-a443-3ac86c1fd540.png)
+### 일반 모드
 
-## 설치
+| 키 | 동작 |
+|---|---|
+| 화살표 위/아래 | 서버 목록 커서 이동 |
+| PageUp / PageDown | 서버 목록 20칸씩 이동 |
+| Enter | 커서 위 서버에 SSH(또는 rlogin) 접속 |
+| `/` | 접속 사용자 변경 |
+| `,` 또는 `\` | 접속 방식 전환 (rlogin ↔ SSH) |
+| 영문 입력 | 키워드 필터 (스페이스로 AND 조건, 대소문자 무관, host·tag·description 검색) |
+| Ctrl+R | 키워드 초기화 |
+| Ctrl+N | 서버 추가 |
+| Ctrl+E | 커서 위 서버 정보 수정 |
+| Ctrl+D | 커서 위 서버 삭제 |
+| Ctrl+L | 커서 위 서버에서 원격 명령 실행 (출력 팝업 표시) |
+| `:` | 명령어 모드 진입 |
+| Ctrl+C | 종료 |
 
-* `gwkit.py` 을 그냥 실행하면 됩니다.
-  * `python gwkit.py` 을 실행하거나, 실행권한을 주고 `./gwkit.py` 하시면 됩니다.
-* 내부적으로 서버 목록 관리를 위해 `gwkit.py` 와 동일한 dir 에 `server_list.json` 파일을 저장합니다.
-  * 아래와 같은 형식이므로 직접 수정하셔도 됩니다.
-    ```json
-    [
-        {
-            'host': '',
-            'description': '',
-            'tags': ['']
-        }
-    ]
-    ```
-    
+### 명령어 모드 (`:` 입력 후)
+
+| 명령 | 동작 |
+|---|---|
+| `:all` | 전체 서버 표시 (그룹 필터 해제) |
+| `:group` | 그룹 선택 팝업 열기 |
+| `:group <이름>` | 해당 그룹으로 바로 전환 |
+| `:quit` 또는 `:q` | 종료 |
+
+### 그룹 활성 상태에서
+
+그룹을 선택하면 서버 목록이 그룹 멤버로 필터링되며, Ctrl+N / Ctrl+D 동작이 변경됩니다.
+
+| 키 | 동작 |
+|---|---|
+| Ctrl+N | 현재 그룹에 서버 추가 (멀티 선택 팝업) |
+| Ctrl+D | 현재 그룹에서 서버 제거 (멀티 선택 팝업) |
+
+### 그룹 선택 팝업 안에서
+
+| 키 | 동작 |
+|---|---|
+| 화살표 위/아래 | 그룹 목록 이동 |
+| Enter | 그룹 선택 |
+| Ctrl+N | 새 그룹 생성 |
+| Ctrl+D | 그룹 삭제 |
+| ESC / Ctrl+C | 팝업 닫기 |
+
+## 기능 상세
+
+### 서버 목록 관리
+
+* `server_list.json` 파일에 서버 정보를 저장합니다. 직접 편집도 가능합니다.
+  ```json
+  [
+      {
+          "host": "example.com",
+          "description": "Example server",
+          "tags": ["web", "prod"]
+      }
+  ]
+  ```
+* 필터링된 키워드는 목록에서 빨간색으로 강조됩니다.
+
+### 그룹
+
+* 서버를 그룹으로 묶어 필터링 뷰를 만들 수 있습니다.
+* `:group` 으로 팝업을 열고, Ctrl+N으로 그룹 생성 후 서버를 추가합니다.
+* 그룹 정보는 별도 파일에 저장됩니다.
+
+### 원격 명령 실행 팝업 (Ctrl+L)
+
+* 서버에 SSH 전체 세션을 열지 않고, 단일 명령의 출력을 팝업 창 안에서 실시간으로 볼 수 있습니다.
+* `tail -F /path/to/log` 처럼 스트리밍 출력도 지원합니다.
+* 팝업 안 키:
+  * `q` 또는 ESC: 종료 (원격 프로세스 자동 정리)
+* 주의: SSH 키 기반 인증이 필요합니다. `top`, `vim` 등 TTY 기반 대화형 앱은 지원하지 않습니다.
+
+### Tips 서버 목록 연동
+
+* `python gwkit.py init` 으로 실행하면 Tips SSO 로그인 후 서버 목록을 자동 가져옵니다.
+  * 호스트명 → Host, 서버그룹명 → Description, 태그 → Tags 로 매핑됩니다.
+* 한글이 포함된 경우 인코딩 이슈가 발생할 수 있습니다. Tips에서 영문으로 변경 후 재실행하세요.
+
+### kinit 자동 실행
+
+* `~/.kinit_passwd` 파일이 있으면 시작 시 자동으로 `kinit` 을 실행합니다.
+
+## 설치 및 실행
+
+```bash
+python gwkit.py         # 일반 실행
+python gwkit.py init    # Tips 서버 목록 초기화
+```
+
 ## 라이센스
 
-* 그런거 없습니다. 마음대로 가져다가 수정해서 쓰세요.....
+* 그런거 없습니다. 마음대로 가져다가 수정해서 쓰세요.
 
-copyright @handraker
-https://github.com/handraker/new-gwit
+copyright @handraker https://github.com/handraker/new-gwit
 
-### 기능추가 @viewrain
-* sso 로그인 기능추가
-* 서버리스트 Fetch 기능 추가
-
-### 사용법
-* 기존 실행파일에 init argument 입력
-  - python gwkit.py init
-- sso login
-
-
-![image](https://user-images.githubusercontent.com/11779505/147825295-6351063b-f90b-4547-ae26-745b15364e60.png)
-
-### 주의사항
-* Tips 의 나의서버그룹 정보를 가져와서 json 에 맵핑합니다. 
-  * 호스트명 : Host
-  * 서버그룹명 : Description
-  * 태그 : Tags
-
-* 한글이 존재할 경우 인코딩 이슈가 발생합니다. 
-  * 로직내 검색기능은 리눅스 환경에서 한글은 추천하지 않습니다. 만약 Tips 상에 한글이 존재한다면, 영문으로 변경 후 init 부탁드립니다. 
-
-![image](https://user-images.githubusercontent.com/11779505/148932441-267c1f5d-fbbc-401b-83d0-9b1673df500b.png)
-
-### init 후 자동으로 등록됩니다. 
-![image](https://user-images.githubusercontent.com/11779505/148932547-9d80ecdd-e0cd-476c-b970-66bcc30be99e.png)
-
-
-
-
-
-
-
-
-
+기능 추가 @viewrain, @지승훈
