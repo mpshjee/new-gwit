@@ -84,7 +84,7 @@ class RemoteCommandOutputPopup(object):
         title = '[{0}] $ {1}'.format(self.host, cmd)
         safe_addstr(self.window, 0, 2, title[:self.w - 4], curses.color_pair(5))
 
-        hint = '[any key] close' if finished else '[q/esc] quit'
+        hint = '[any key] close' if finished else '[ctrl+c] quit'
         safe_addstr(self.window, self.h - 2, self.w - len(hint) - 3, hint, curses.color_pair(5))
 
         lines = list(self.buffer)[-self._content_h:]
@@ -143,8 +143,6 @@ class RemoteCommandOutputPopup(object):
                 c = self.window.getch()
                 if c == curses.KEY_RESIZE:
                     raise ResizeRequested()
-                if c in (27, ord('q')):
-                    break
 
                 # stdout non-blocking drain
                 eof = False
