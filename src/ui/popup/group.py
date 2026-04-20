@@ -64,40 +64,44 @@ class GroupSelectPopup:
                 value += chr(c)
 
     def process(self):
-        while True:
-            try:
-                c = self.window.getch()
-                if c == curses.KEY_RESIZE:
-                    raise ResizeRequested()
-                elif c == curses.KEY_UP:
-                    self.list.select_up()
-                    self._render()
-                elif c == curses.KEY_DOWN:
-                    self.list.select_down()
-                    self._render()
-                elif c == ord('\n'):
-                    selected = self.list.get_selected()
-                    if selected is None:
+        try:
+            while True:
+                try:
+                    c = self.window.getch()
+                    if c == curses.KEY_RESIZE:
+                        raise ResizeRequested()
+                    elif c == curses.KEY_UP:
+                        self.list.select_up()
+                        self._render()
+                    elif c == curses.KEY_DOWN:
+                        self.list.select_down()
+                        self._render()
+                    elif c == ord('\n'):
+                        selected = self.list.get_selected()
+                        if selected is None:
+                            return None
+                        return '' if selected == self.ALL_LABEL else selected
+                    elif c == 14:  # Ctrl+N: 그룹 생성
+                        name = self._prompt_name('New group name: ')
+                        if name:
+                            self.server_group_manager.create_group(name)
+                            self.server_group_manager.save()
+                        self._refresh_entries()
+                        self._render()
+                    elif c == 4:  # Ctrl+D: 그룹 삭제 (all 항목 제외)
+                        if self.list.selected_idx > 0:
+                            target = self.list.get_selected()
+                            self.server_group_manager.delete_group(target)
+                            self.server_group_manager.save()
+                        self._refresh_entries()
+                        self._render()
+                    elif c in (27, 3):  # ESC or Ctrl+C
                         return None
-                    return '' if selected == self.ALL_LABEL else selected
-                elif c == 14:  # Ctrl+N: 그룹 생성
-                    name = self._prompt_name('New group name: ')
-                    if name:
-                        self.server_group_manager.create_group(name)
-                        self.server_group_manager.save()
-                    self._refresh_entries()
-                    self._render()
-                elif c == 4:  # Ctrl+D: 그룹 삭제 (all 항목 제외)
-                    if self.list.selected_idx > 0:
-                        target = self.list.get_selected()
-                        self.server_group_manager.delete_group(target)
-                        self.server_group_manager.save()
-                    self._refresh_entries()
-                    self._render()
-                elif c in (27, 3):  # ESC or Ctrl+C
+                except KeyboardInterrupt:
                     return None
-            except KeyboardInterrupt:
-                return None
+        finally:
+            self.window.erase()
+            self.window.refresh()
 
 
 class AddServerToGroupPopup:
@@ -135,31 +139,35 @@ class AddServerToGroupPopup:
         self.window.refresh()
 
     def process(self):
-        while True:
-            try:
-                c = self.window.getch()
-                if c == curses.KEY_RESIZE:
-                    raise ResizeRequested()
-                elif c == curses.KEY_UP:
-                    self.list.select_up()
-                    self._render()
-                elif c == curses.KEY_DOWN:
-                    self.list.select_down()
-                    self._render()
-                elif c == ord('\n'):
-                    selected = self.list.get_selected()
-                    if selected is not None:
-                        return selected['host']
-                elif c in (8, 127, curses.KEY_BACKSPACE):
-                    if self.keyword:
-                        self.keyword = self.keyword[:-1]
+        try:
+            while True:
+                try:
+                    c = self.window.getch()
+                    if c == curses.KEY_RESIZE:
+                        raise ResizeRequested()
+                    elif c == curses.KEY_UP:
+                        self.list.select_up()
+                        self._render()
+                    elif c == curses.KEY_DOWN:
+                        self.list.select_down()
+                        self._render()
+                    elif c == ord('\n'):
+                        selected = self.list.get_selected()
+                        if selected is not None:
+                            return selected['host']
+                    elif c in (8, 127, curses.KEY_BACKSPACE):
+                        if self.keyword:
+                            self.keyword = self.keyword[:-1]
+                            self._filter()
+                            self._render()
+                    elif c in (27, 3):  # ESC or Ctrl+C
+                        return None
+                    elif 32 <= c <= 126:
+                        self.keyword += chr(c)
                         self._filter()
                         self._render()
-                elif c in (27, 3):  # ESC or Ctrl+C
+                except KeyboardInterrupt:
                     return None
-                elif 32 <= c <= 126:
-                    self.keyword += chr(c)
-                    self._filter()
-                    self._render()
-            except KeyboardInterrupt:
-                return None
+        finally:
+            self.window.erase()
+            self.window.refresh()

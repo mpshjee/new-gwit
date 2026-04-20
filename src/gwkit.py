@@ -54,6 +54,15 @@ def execute_command(cmd_str, app, server_group_manager=None):
         return 'error', 'unknown command: ' + cmd
 
 
+def _refresh_all_wins(wins):
+    for key in ('help', 'group_ctx', 'user', 'list'):
+        w = wins.get(key)
+        if w is not None:
+            w.refresh()
+    if wins.get('keyword') is not None:
+        wins['keyword'].refresh_display()
+
+
 def rebuild_all_windows(stdscr, ui, app, user_state, server_manager, server_group_manager):
     stdscr.clear()
     rows, cols = stdscr.getmaxyx()
@@ -110,9 +119,7 @@ def _handle_command_mode(wins, stdscr, ui, app, user_state, server_manager, serv
             return
         elif result == 'ok':
             wins['list'].filter()
-            wins['list'].refresh()
-            wins['group_ctx'].refresh()
-        wins['help'].refresh()
+    _refresh_all_wins(wins)
 
 
 def _handle_modify_server(wins, stdscr, ui, app, user_state, server_manager, server_group_manager):
@@ -131,7 +138,7 @@ def _handle_modify_server(wins, stdscr, ui, app, user_state, server_manager, ser
             current_server['description'] = new_server['description']
             current_server['tags'] = new_server['tags']
             wins['list'].refresh_max()
-    wins['list'].refresh()
+    _refresh_all_wins(wins)
 
 
 def _handle_register_server(wins, stdscr, ui, app, user_state, server_manager, server_group_manager):
@@ -144,7 +151,7 @@ def _handle_register_server(wins, stdscr, ui, app, user_state, server_manager, s
         server_manager.insert_server(new_server)
         wins['list'].filter()
         wins['list'].refresh_max()
-    wins['list'].refresh()
+    _refresh_all_wins(wins)
 
 
 def _handle_add_to_group(wins, stdscr, ui, app, user_state, server_manager, server_group_manager):
@@ -157,7 +164,7 @@ def _handle_add_to_group(wins, stdscr, ui, app, user_state, server_manager, serv
         server_group_manager.add_to_group(host, app.active_group_name)
         server_group_manager.save()
         wins['list'].filter()
-    wins['list'].refresh()
+    _refresh_all_wins(wins)
 
 
 def _handle_group_select(wins, stdscr, ui, app, user_state, server_manager, server_group_manager):
@@ -172,9 +179,7 @@ def _handle_group_select(wins, stdscr, ui, app, user_state, server_manager, serv
         if app.active_group_name and app.active_group_name not in server_group_manager.groups:
             app.active_group_name = ''
         wins['list'].filter()
-        wins['list'].refresh()
-        wins['group_ctx'].refresh()
-        wins['help'].refresh()
+    _refresh_all_wins(wins)
 
 
 def main(stdscr):

@@ -37,32 +37,38 @@ class ServerPopup:
         ])
 
     def process(self):
-        while True:
-            try:
-                c = self.window.getch()
-                if c == curses.KEY_RESIZE:
-                    raise ResizeRequested()
-                elif c == curses.KEY_UP:
-                    self.form.move_cursor(-1)
-                elif c == curses.KEY_DOWN:
-                    self.form.move_cursor(1)
-                elif c == ord('\n'):
-                    host_val = self.form.get_value(0)
-                    if not self.server_manager.is_duplicated_host(host_val, self.original_host):
-                        return {
-                            'host': host_val,
-                            'description': self.form.get_value(1),
-                            'tags': list(filter(lambda s: s != '', re.split(',| ', self.form.get_value(2))))
-                        }
+        result = None
+        try:
+            while True:
+                try:
+                    c = self.window.getch()
+                    if c == curses.KEY_RESIZE:
+                        raise ResizeRequested()
+                    elif c == curses.KEY_UP:
+                        self.form.move_cursor(-1)
+                    elif c == curses.KEY_DOWN:
+                        self.form.move_cursor(1)
+                    elif c == ord('\n'):
+                        host_val = self.form.get_value(0)
+                        if not self.server_manager.is_duplicated_host(host_val, self.original_host):
+                            result = {
+                                'host': host_val,
+                                'description': self.form.get_value(1),
+                                'tags': list(filter(lambda s: s != '', re.split(',| ', self.form.get_value(2))))
+                            }
+                            return result
+                        else:
+                            safe_addstr(self.window, 3, 2, 'Duplicated Host !!!', curses.color_pair(4))
+                            self.window.getch()
+                            safe_addstr(self.window, 3, 2, '                         ')
+                            self.form.move_cursor(0)
                     else:
-                        safe_addstr(self.window, 3, 2, 'Duplicated Host !!!', curses.color_pair(4))
-                        self.window.getch()
-                        safe_addstr(self.window, 3, 2, '                         ')
-                        self.form.move_cursor(0)
-                else:
-                    self.form.process_key(c)
-            except KeyboardInterrupt:
-                return None
+                        self.form.process_key(c)
+                except KeyboardInterrupt:
+                    return None
+        finally:
+            self.window.erase()
+            self.window.refresh()
 
 
 class LoadTipsServerList:
@@ -82,27 +88,31 @@ class LoadTipsServerList:
         ])
 
     def process(self):
-        while True:
-            try:
-                c = self.window.getch()
-                if c == curses.KEY_RESIZE:
-                    raise ResizeRequested()
-                elif c == curses.KEY_UP:
-                    self.form.move_cursor(-1)
-                elif c == curses.KEY_DOWN:
-                    self.form.move_cursor(1)
-                elif c == ord('\n'):
-                    values = self.form.get_values()
-                    if not values[0]:
-                        logger.info('no value')
-                    elif not values[1]:
-                        logger.info('no value')
+        try:
+            while True:
+                try:
+                    c = self.window.getch()
+                    if c == curses.KEY_RESIZE:
+                        raise ResizeRequested()
+                    elif c == curses.KEY_UP:
+                        self.form.move_cursor(-1)
+                    elif c == curses.KEY_DOWN:
+                        self.form.move_cursor(1)
+                    elif c == ord('\n'):
+                        values = self.form.get_values()
+                        if not values[0]:
+                            logger.info('no value')
+                        elif not values[1]:
+                            logger.info('no value')
+                        else:
+                            return {'sso_id': values[0], 'sso_pw': values[1]}
                     else:
-                        return {'sso_id': values[0], 'sso_pw': values[1]}
-                else:
-                    self.form.process_key(c)
-            except KeyboardInterrupt:
-                return None
+                        self.form.process_key(c)
+                except KeyboardInterrupt:
+                    return None
+        finally:
+            self.window.erase()
+            self.window.refresh()
 
 
 class CommandPrompt:
@@ -122,21 +132,25 @@ class CommandPrompt:
         self.window.refresh()
 
     def process(self):
-        while True:
-            try:
-                c = self.window.getch()
-                if c == curses.KEY_RESIZE:
-                    raise ResizeRequested()
-                elif c == 27:
-                    return None
-                elif c == ord('\n'):
-                    return self.input_value.strip()
-                elif c in (8, 127, curses.KEY_BACKSPACE):
-                    if self.input_value:
-                        self.input_value = self.input_value[:-1]
+        try:
+            while True:
+                try:
+                    c = self.window.getch()
+                    if c == curses.KEY_RESIZE:
+                        raise ResizeRequested()
+                    elif c == 27:
+                        return None
+                    elif c == ord('\n'):
+                        return self.input_value.strip()
+                    elif c in (8, 127, curses.KEY_BACKSPACE):
+                        if self.input_value:
+                            self.input_value = self.input_value[:-1]
+                            self._render()
+                    elif 32 <= c <= 126:
+                        self.input_value += chr(c)
                         self._render()
-                elif 32 <= c <= 126:
-                    self.input_value += chr(c)
-                    self._render()
-            except KeyboardInterrupt:
-                return None
+                except KeyboardInterrupt:
+                    return None
+        finally:
+            self.window.erase()
+            self.window.refresh()

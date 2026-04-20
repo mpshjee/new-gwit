@@ -79,6 +79,10 @@ class UserPanel:
         safe_addstr(self.window, 1, 2, "user : " + self.user_state.get_user() + ", [ " + self.user_state.get_login_method() + " ]")
         self.window.refresh()
 
+    def refresh(self):
+        self.window.clear()
+        self.refresh_user_border()
+
 
 class KeywordPanel:
     def __init__(self, ui, app, y, height):
