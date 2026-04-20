@@ -12,7 +12,8 @@ from data import ServerManager, ServerGroupManager
 from fetch import init_server_list
 from ui import (HelpPanel, GroupContextPanel, UserPanel, KeywordPanel, ServerListPanel,
                 ServerPopup, CommandPrompt, show_status_message,
-                GroupSelectPopup, AddServerToGroupPopup, RemoveServersFromGroupPopup)
+                GroupSelectPopup, AddServerToGroupPopup, RemoveServersFromGroupPopup,
+                RemoteCommandOutputPopup)
 from ui.layout import VerticalLayout, HELP_ROWS, GROUP_CTX_ROWS, TOP_WIN_ROWS
 
 logger = logging.getLogger('gwkit')
@@ -251,6 +252,16 @@ def main(stdscr):
                 wins['list'].delete_current_server()
                 wins['list'].refresh_max()
                 wins['list'].refresh()
+            return
+        elif c == 12:  # Ctrl+L: 현재 서버에서 원격 명령 실행 및 출력 팝업
+            current = wins['list'].get_current_server()
+            if current is not None:
+                _, resized = run_popup(
+                    lambda: RemoteCommandOutputPopup(ui, user_state, current['host']).process())
+                if resized:
+                    _do_rebuild(wins, stdscr, ui, app, user_state, server_manager, server_group_manager)
+                    return
+            _refresh_all_wins(wins)
             return
         elif c == curses.KEY_UP:
             wins['list'].select_up(1)

@@ -29,7 +29,7 @@ class HelpPanel:
         safe_addstr(self.window, 1, 2, '[/]: change user,  [,]: change rlogin/ssh')
         safe_addstr(self.window, 2, 2, n_label + '     ' + d_label)
         safe_addstr(self.window, 3, 2, '[ctrl-e]: modify server           [ctrl-c]: quit or close popup window')
-        safe_addstr(self.window, 4, 2, '[ctrl-r]: reset keyword')
+        safe_addstr(self.window, 4, 2, '[ctrl-r]: reset keyword           [ctrl-l]: run remote command (output in popup)')
         safe_addstr(self.window, 5, 2, '[:]: command mode (e.g., :all, :group, :group <name>, :quit)')
         safe_addstr(self.window, 6, 2, '- registered server will be saved when terminated. (server_list.json)')
         safe_addstr(self.window, 7, 2, '- make "~/.kinit_passwd" to execute kinit automatically.')
