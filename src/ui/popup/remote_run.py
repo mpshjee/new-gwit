@@ -8,6 +8,7 @@ import os
 import pipes
 import select
 import subprocess
+import sys
 import time
 
 from config import ResizeRequested
@@ -54,19 +55,22 @@ class RemoteCommandOutputPopup(object):
 
         try:
             while True:
-                disp = 'Command: ' + value[:cursor_pos] + '_' + value[cursor_pos:]
-                safe_addstr(self.window, 2, 2, disp.ljust(self._content_w + 2), curses.color_pair(6))
-                self.window.refresh()
+                try:
+                    disp = 'Command: ' + value[:cursor_pos] + '_' + value[cursor_pos:]
+                    safe_addstr(self.window, 2, 2, disp.ljust(self._content_w + 2), curses.color_pair(6))
+                    self.window.refresh()
 
-                c = self.window.getch()
-                if c == curses.KEY_RESIZE:
-                    raise ResizeRequested()
-                elif c == ord('\n'):
-                    return value.strip() if value.strip() else None
-                elif c == 27:  # ESC
+                    c = self.window.getch()
+                    if c == curses.KEY_RESIZE:
+                        raise ResizeRequested()
+                    elif c == ord('\n'):
+                        return value.strip() if value.strip() else None
+                    elif c == 27:  # ESC
+                        return None
+                    else:
+                        value, cursor_pos, _ = handle_line_edit_key(c, value, cursor_pos)
+                except KeyboardInterrupt:
                     return None
-                else:
-                    value, cursor_pos, _ = handle_line_edit_key(c, value, cursor_pos)
         finally:
             curses.curs_set(0)
 
@@ -75,7 +79,7 @@ class RemoteCommandOutputPopup(object):
             self.buffer.append(line.rstrip('\r'))
 
     def _render_output(self, cmd, finished=False):
-        self.window.clear()
+        self.window.erase()
         self.window.border(0)
 
         title = '[{0}] $ {1}'.format(self.host, cmd)
@@ -122,37 +126,65 @@ class RemoteCommandOutputPopup(object):
             self._wait_any_key()
             return
 
-        fd = self.proc.stdout.fileno()
-        fl = fcntl.fcntl(fd, fcntl.F_GETFL)
-        fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+        stdout_fd = self.proc.stdout.fileno()
+        fl = fcntl.fcntl(stdout_fd, fcntl.F_GETFL)
+        fcntl.fcntl(stdout_fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
+        stdin_fd = sys.stdin.fileno()
         self.window.nodelay(True)
         self._render_output(cmd)
 
-        while True:
-            c = self.window.getch()
-            if c == curses.KEY_RESIZE:
-                raise ResizeRequested()
-            if c in (27, ord('q'), 3):  # ESC / q / Ctrl+C
-                break
+        RENDER_INTERVAL = 0.08
+        last_render = time.time()
+        pending = False
 
-            readable, _, _ = select.select([self.proc.stdout], [], [], 0.05)
-            if readable:
+        try:
+            while True:
                 try:
-                    data = os.read(fd, 4096)
-                except (OSError, IOError):
-                    data = ''
-                if data:
-                    self._append_lines(data)
+                    readable, _, _ = select.select(
+                        [stdin_fd, stdout_fd], [], [], 0.2)
+                except select.error:
+                    continue
+
+                if stdin_fd in readable:
+                    c = self.window.getch()
+                    if c == curses.KEY_RESIZE:
+                        raise ResizeRequested()
+                    if c in (27, ord('q')):
+                        break
+
+                eof = False
+                if stdout_fd in readable:
+                    while True:
+                        try:
+                            data = os.read(stdout_fd, 4096)
+                        except (OSError, IOError):
+                            break
+                        if not data:
+                            eof = True
+                            break
+                        self._append_lines(data)
+                        pending = True
+                        if len(data) < 4096:
+                            break
+
+                now = time.time()
+                if pending and (now - last_render) >= RENDER_INTERVAL:
                     self._render_output(cmd)
-                else:
-                    # EOF: 프로세스 종료 대기 후 반환 코드 표시
+                    last_render = now
+                    pending = False
+
+                if eof:
+                    if pending:
+                        self._render_output(cmd)
                     rc = self.proc.wait()
                     self.buffer.append('[exited rc={0}]'.format(rc))
                     self._render_output(cmd, finished=True)
                     self.window.nodelay(False)
                     self._wait_any_key()
                     break
+        except KeyboardInterrupt:
+            pass
 
     def _cleanup(self):
         if self.proc and self.proc.poll() is None:
